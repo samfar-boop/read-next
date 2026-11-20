@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Read Next: 10,000 Books</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: curious and warm; a library after dark that a parent can also use in two minutes
+   IDEA: a galaxy where every star is a book, plus a librarian's desk that answers "what next?"
+   PICTURE: the 10,000-book web drawn on the GPU; in Find, a tidy stack of book cards
+   COLOUR and TYPE: night sky ground, one colour per shelf; Syne titles, Inter body
+   LAYOUT: title strip, view switch and shared age picker, then the web or the finder */
+:root{color-scheme:light dark;--bg:light-dark(#f2eff7,#0c0a12);--ink:light-dark(#17131f,#ece8f4);--mute:light-dark(#5f5870,#9c94ad);--panel:light-dark(#ffffff,#16121e);--line:light-dark(#d9d3e4,#2a2436);--soft:light-dark(#ebe6f3,#1d1828);--sky:#0a0810;--hot:#ffe066}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1440px;margin:0 auto;padding:clamp(18px,3vw,36px) max(3vw,14px)}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:10px 28px}
+h1{font:800 clamp(34px,5vw,52px)/1.05 Syne,sans-serif;margin:0;letter-spacing:-.02em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--mute);max-width:66ch}
+.stats{display:flex;gap:22px;font-size:14px;color:var(--mute)}
+.stats b{display:block;font:700 28px/1 Syne,sans-serif;color:var(--ink)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:20px}
+.tabs{display:flex;background:var(--soft);border-radius:12px;padding:4px}
+.tabs a{min-height:40px;display:flex;align-items:center;padding:0 18px;border-radius:9px;color:var(--mute);text-decoration:none;font-weight:600}
+.tabs a[aria-current=page]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.age{display:flex;align-items:center;gap:10px;font-weight:500}
+select,input,button{font:16px Inter,sans-serif;min-height:44px;border-radius:10px}
+select{padding:0 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.agenote{font-size:13px;color:var(--mute)}
+button:focus-visible,input:focus-visible,select:focus-visible,.chip:focus-visible,.tabs a:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+.btn{padding:0 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.go{padding:0 16px;background:var(--ink);color:var(--bg);border:0;cursor:pointer;font-weight:600}
+.view[hidden]{display:none}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;margin-top:16px}
+.fig{position:relative;height:min(80vh,880px);min-height:440px;background:radial-gradient(ellipse at 50% 45%,#17122a,var(--sky) 70%);border-radius:14px;overflow:hidden;touch-action:none}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%}
+#ov{cursor:grab}#ov.drag{cursor:grabbing}
+.tools{position:absolute;left:12px;top:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.tools>*{pointer-events:auto}
+.tools input{width:min(340px,100%);padding:0 14px;border:1px solid #3a3248;background:rgba(22,18,30,.92);color:#ece8f4}
+.tools button{padding:0 14px;border:1px solid #3a3248;background:rgba(22,18,30,.92);color:#ece8f4;cursor:pointer}
+.tip{position:absolute;pointer-events:none;background:rgba(12,10,18,.95);color:#ece8f4;border:1px solid #3a3248;padding:6px 10px;border-radius:8px;font-size:13px;max-width:260px;display:none}
+.hint{position:absolute;left:12px;bottom:10px;font-size:13px;color:#9c94ad;pointer-events:none;margin:0}
+.load{position:absolute;inset:0;display:grid;place-items:center;color:#9c94ad;font-size:15px;text-align:center;padding:20px}
+aside{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h2{font:700 26px/1.1 Syne,sans-serif;margin:0;text-wrap:balance}
+.card h3{font:600 14px Inter,sans-serif;margin:16px 0 6px;color:var(--mute)}
+.by{color:var(--mute);margin:4px 0 0;font-size:15px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.pill i{width:9px;height:9px;border-radius:50%}
+.list{max-height:330px;overflow-y:auto}
+.lk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:inherit;padding:9px 0;cursor:pointer;min-height:44px;border-radius:0}
+.lk b{font-weight:600;font-size:15px}.lk span{grid-column:1;font-size:13px;color:var(--mute);line-height:1.4}
+.lk em{grid-row:1/3;grid-column:2;align-self:center;font-weight:600;font-style:normal;white-space:nowrap}
+.lk:hover b{text-decoration:underline}
+.empty{color:var(--mute);font-size:15px;margin:8px 0 0}
+.small{font-size:13px;color:var(--mute)}
+.jf label,.form label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.jf input,.form input{width:100%;padding:0 12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.row>button{flex:1}
+ol.path{margin:12px 0 0;padding-left:22px;font-size:15px}ol.path li{margin:4px 0}ol.path small{display:block;color:var(--mute);font-size:13px}
+.key{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:0 14px;min-height:40px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-size:14px}
+.chip i{width:11px;height:11px;border-radius:50%}.chip span{color:var(--mute)}
+.chip[aria-pressed=false]{opacity:.38}
+#fShelf .chip[aria-pressed=false]{opacity:1}#fShelf .chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* finder */
+.find{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;margin-top:16px;align-items:start}
+.form{position:sticky;top:12px}
+.add{display:flex;gap:8px}.add input{flex:1}
+.loved{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.lv{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 12px;border-radius:99px;background:var(--soft);font-size:14px}
+.lv button{min-height:28px;width:28px;border-radius:50%;border:0;background:transparent;color:var(--mute);cursor:pointer;font-size:16px}
+.check{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:15px}
+.check input{width:20px;min-height:20px;height:20px}
+.shelfpick{display:flex;flex-wrap:wrap;gap:6px}.shelfpick .chip{min-height:34px;font-size:13px;padding:0 10px}
+.res-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px}
+.res-head h2{font:700 30px/1.1 Syne,sans-serif;margin:0;text-wrap:balance}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:14px}
+.bk{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;border-top:5px solid var(--c)}
+.bk h3{font:600 17px/1.3 Inter,sans-serif;margin:0}
+.bk .why{font-size:13px;color:var(--mute);line-height:1.45;margin:2px 0 0}
+.bk .why b{color:var(--ink);font-weight:600}
+.bk .acts{display:flex;gap:6px;margin-top:auto;padding-top:8px}
+.bk .acts button{flex:1;min-height:38px;font-size:14px}
+.more{margin-top:16px}
+.warn{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:14px;color:var(--mute)}
+footer{margin-top:22px;color:var(--mute);font-size:13px;border-top:1px solid var(--line);padding-top:10px}
+footer a{color:inherit}
+@media(max-width:960px){.main,.find{grid-template-columns:minmax(0,1fr)}.fig{height:70vh}.form{position:static}}
+@media(max-width:600px){.stats b{font-size:22px}.hint{display:none}.tabs a{padding:0 12px}}
+</style></head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Read Next: nearly 10,000 books</h1>
+  <p class="sub">Explore the web of what readers loved next, or tell it your kid's age and a few favourites and it finds books that fit all of them.</p></div>
+  <div class="stats"><div><b id="sB">…</b>books</div><div><b id="sL">…</b>links</div><div><b>6M</b>ratings</div></div>
+</header>
+
+<div class="bar">
+  <nav class="tabs" aria-label="Views"><a href="#web" id="tWeb">The web</a><a href="#find" id="tFind">Find books for a kid</a></nav>
+  <label class="age" for="age">Reader's age
+    <select id="age"><option value="">Any age</option></select></label>
+  <span class="agenote" id="ageNote"></span>
+</div>
+
+<section class="view" id="vWeb">
+<div class="main">
+  <div class="fig" id="fig">
+    <canvas id="gl"></canvas><canvas id="ov" aria-label="Network of 10,000 books connected by shared readers"></canvas>
+    <p class="load" id="load">Loading 10,000 books…</p>
+    <div class="tools">
+      <input id="q" list="titles" type="search" placeholder="Find a book or author" aria-label="Find a book">
+      <button id="fit" type="button">Show all</button>
+    </div>
+    <div class="tip" id="tip"></div>
+    <p class="hint">Scroll or pinch to zoom, drag to move, tap a star to open it</p>
+  </div>
+  <aside>
+    <section class="card" id="info" aria-live="polite"></section>
+    <section class="card jf">
+      <h2>Plan a reading journey</h2>
+      <label for="from">Start with</label><input id="from" list="titles" placeholder="e.g. Holes">
+      <label for="to">End up at</label><input id="to" list="titles" placeholder="e.g. Dune">
+      <div class="row"><button class="go" id="route" type="button">Find the path</button><button class="btn" id="clear" type="button">Clear</button></div>
+      <div id="pathOut"></div>
+    </section>
+  </aside>
+</div>
+<div class="key" id="key" role="group" aria-label="Show or hide shelves"></div>
+</section>
+
+<section class="view" id="vFind" hidden>
+<div class="find">
+  <div class="card form">
+    <h2>Who's reading?</h2>
+    <p class="small" style="margin:6px 0 0">Set the age at the top. Then add books your kid loved; results fit all of them, not just one.</p>
+    <label for="addIn">Books they loved</label>
+    <div class="add"><input id="addIn" list="titles" placeholder="e.g. Wonder"><button class="btn" id="addBtn" type="button">Add</button></div>
+    <div class="loved" id="loved"></div>
+    <label class="check"><input type="checkbox" id="series"> Include more books from the same series</label>
+    <label style="margin-top:16px">Only these shelves (optional)</label>
+    <div class="shelfpick" id="fShelf"></div>
+    <div class="row"><button class="btn" id="reset" type="button">Start again</button></div>
+  </div>
+  <div>
+    <div class="res-head"><h2 id="resTitle">Popular books</h2><span class="small" id="resNote"></span></div>
+    <div class="grid" id="results"></div>
+    <div class="more"><button class="btn" id="moreBtn" type="button" hidden>Show more</button></div>
+    <p class="warn">Age bands are estimates from how thousands of Goodreads readers tagged each book (picture book, middle grade, young adult, school reading and so on). They are a starting point, not a content rating. Check any book you're unsure about at <a href="https://www.commonsensemedia.org/book-reviews">Common Sense Media</a> before handing it over.</p>
+  </div>
+</div>
+</section>
+
+<datalist id="titles"></datalist>
+<footer>Data: <a href="https://github.com/zygmuntz/goodbooks-10k">goodbooks-10k</a>, about 6 million Goodreads ratings from 53,000 readers, collected around 2017, so newer books are missing. Of its 10,000 books, 469 explicit adult titles were left out. Links and matches come from those ratings; shelves and age bands come from readers' own tags.</footer>
+</div>
+
+<script>
+{
+const COL=['#b48cff','#38bdf8','#ef4444','#f59e0b','#f472b6','#fb923c','#a8a29e','#f5f0e6','#22c55e','#fde047','#d946ef','#94a3b8','#2dd4bf','#6366f1','#a3e635'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+'M':Math.round(n/1e3)+'k';
+const hexRGB=h=>{const n=parseInt(h.slice(1),16);return[(n>>16)/255,(n>>8&255)/255,(n&255)/255]};
+const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`};
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let N=[],E=[],SH=[],BANDS=[],adj=[],byPop=[],NEAR=null,K=60,titleIdx=new Map();
+let age=null,hiddenShelf=new Set();
+
+/* ---------- shared: age ---------- */
+for(let a=2;a<=17;a++)$('#age').insertAdjacentHTML('beforeend',`<option value="${a}">${a} years old</option>`);
+$('#age').insertAdjacentHTML('beforeend','<option value="18">18 or older</option>');
+try{const s=localStorage.getItem('rn-age');if(s!==null){$('#age').value=s}}catch(e){}
+const fitsAge=i=>{if(age===null)return true;const b=BANDS[N[i].band];return age>=b[1]&&age<=b[2]};
+$('#age').addEventListener('change',()=>{age=$('#age').value===''?null:+$('#age').value;try{localStorage.setItem('rn-age',$('#age').value)}catch(e){}ageNote();rebuild();runFind()});
+function ageNote(){if(!N.length)return;$('#ageNote').textContent=age===null?'':`${N.filter((_,i)=>fitsAge(i)).length.toLocaleString()} books suit this age`}
+
+/* ---------- views ---------- */
+function route(){const f=location.hash==='#find';$('#vWeb').hidden=f;$('#vFind').hidden=!f;
+  $('#tWeb').toggleAttribute('aria-current',!f);$('#tFind').toggleAttribute('aria-current',f);
+  if(f){$('#tFind').setAttribute('aria-current','page');runFind()}else{$('#tWeb').setAttribute('aria-current','page');resize()}}
+addEventListener('hashchange',route);
+
+const find=v=>{v=(v||'').trim().toLowerCase();if(!v)return -1;if(titleIdx.has(v))return titleIdx.get(v);const i=byPop.find(k=>N[k].t.toLowerCase().includes(v)||N[k].a.toLowerCase().includes(v));return i===undefined?-1:i};
+// neighbours from the similarity table: [{to,cos,p}]
+function near(i){if(!NEAR)return[];const o=[],base=i*K*4;for(let j=0;j<K;j++){const q=base+j*4;o.push({to:NEAR[q]|NEAR[q+1]<<8,cos:NEAR[q+2]/400,p:NEAR[q+3]})}return o}
+
+/* ---------- web: WebGL layer ---------- */
+const glc=$('#gl'),ov=$('#ov'),ctx=ov.getContext('2d'),fig=$('#fig'),tip=$('#tip');
+const gl=glc.getContext('webgl',{antialias:true,premultipliedAlpha:false});
+let W=0,H=0,dpr=1,view={s:1,x:0,y:0},hover=-1,sel=-1,path=[],t0=0,prog,bufs={},nEdgeV=0;
+const VS=`attribute vec2 p;attribute vec4 c;attribute float sz;uniform vec2 sc,of,res;uniform float zs,dpr;varying vec4 vc;
+void main(){vec2 s=p*sc+of;gl_Position=vec4(s/res*2.0-1.0,0,1);gl_Position.y=-gl_Position.y;gl_PointSize=sz*zs*dpr*2.0;vc=c;}`;
+const FS=`precision mediump float;varying vec4 vc;uniform float pt,dim;
+void main(){float a=vc.a*dim;if(pt>0.5){vec2 d=gl_PointCoord-0.5;float r=length(d);if(r>0.5)discard;a*=smoothstep(0.5,0.38,r);}gl_FragColor=vec4(vc.rgb,a);}`;
+function initGL(){if(!gl)return false;const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o};
+  prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))return false;gl.useProgram(prog);
+  ['ep','ec','np','nc','ns'].forEach(k=>bufs[k]=gl.createBuffer());gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);return true}
+const vis=i=>!hiddenShelf.has(N[i].g)&&fitsAge(i);
+const rad=n=>1.2+Math.sqrt(n.n/4.8e6)*9;
+function rebuild(){
+  if(!N.length||!gl)return;
+  const ep=[],ec=[];
+  for(const [a,b] of E){if(!vis(a)||!vis(b))continue;const A=N[a],B=N[b],ca=hexRGB(COL[A.g]),cb=hexRGB(COL[B.g]);
+    ep.push(A.x,A.y,B.x,B.y);ec.push(...ca,.22,...cb,.22)}
+  nEdgeV=ep.length/2;
+  const np=new Float32Array(N.length*2),nc=new Float32Array(N.length*4),ns=new Float32Array(N.length);
+  N.forEach((n,i)=>{np[i*2]=n.x;np[i*2+1]=n.y;const c=hexRGB(COL[n.g]);nc.set([...c,vis(i)?1:0],i*4);ns[i]=vis(i)?rad(n):0});
+  const put=(k,arr)=>{gl.bindBuffer(gl.ARRAY_BUFFER,bufs[k]);gl.bufferData(gl.ARRAY_BUFFER,arr,gl.STATIC_DRAW)};
+  put('ep',new Float32Array(ep));put('ec',new Float32Array(ec));put('np',np);put('nc',nc);put('ns',ns);
+  buildGrid();draw();
+}
+function attr(name,buf,size){const l=gl.getAttribLocation(prog,name);if(l<0)return;gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0)}
+const zsNow=()=>Math.min(2.2,Math.max(.7,Math.sqrt(view.s)));
+function drawGL(dimmed){
+  gl.viewport(0,0,glc.width,glc.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  const u=n=>gl.getUniformLocation(prog,n);
+  gl.uniform2f(u('sc'),view.s,view.s);gl.uniform2f(u('of'),view.x,view.y);gl.uniform2f(u('res'),W,H);gl.uniform1f(u('zs'),zsNow());gl.uniform1f(u('dpr'),dpr);
+  const sl=gl.getAttribLocation(prog,'sz');
+  // links
+  gl.uniform1f(u('pt'),0);gl.uniform1f(u('dim'),dimmed?.25:1);attr('p',bufs.ep,2);attr('c',bufs.ec,4);
+  gl.disableVertexAttribArray(sl);gl.vertexAttrib1f(sl,1);gl.drawArrays(gl.LINES,0,nEdgeV);
+  // stars
+  gl.uniform1f(u('pt'),1);gl.uniform1f(u('dim'),dimmed?.22:1);attr('p',bufs.np,2);attr('c',bufs.nc,4);attr('sz',bufs.ns,1);gl.drawArrays(gl.POINTS,0,N.length);
+}
+// spatial grid for picking
+let grid=new Map();const CELL=12;
+function buildGrid(){grid=new Map();N.forEach((n,i)=>{if(!vis(i))return;const k=Math.floor(n.x/CELL)+':'+Math.floor(n.y/CELL);(grid.get(k)||grid.set(k,[]).get(k)).push(i)})}
+function pick(mx,my){const wx=(mx-view.x)/view.s,wy=(my-view.y)/view.s,r=Math.max(1,Math.ceil(16/view.s/CELL)),cx=Math.floor(wx/CELL),cy=Math.floor(wy/CELL);let best=-1,bd=256;
+  for(let a=-r;a<=r;a++)for(let b=-r;b<=r;b++){const l=grid.get((cx+a)+':'+(cy+b));if(!l)continue;for(const i of l){const dx=(N[i].x-wx)*view.s,dy=(N[i].y-wy)*view.s,d=dx*dx+dy*dy;if(d<bd){bd=d;best=i}}}return best}
+const sx=x=>x*view.s+view.x,sy=y=>y*view.s+view.y;
+function fitView(){const p=24,s=Math.min((W-p*2)/1000,(H-p*2)/1000);view={s,x:(W-1000*s)/2,y:(H-1000*s)/2}}
+let fitted=false;
+function resize(){if($('#vWeb').hidden)return;dpr=devicePixelRatio||1;W=fig.clientWidth;H=fig.clientHeight;if(!W)return;
+  for(const c of [glc,ov]){c.width=W*dpr;c.height=H*dpr}if(N.length&&!fitted){fitView();fitted=true}draw()}
+
+function webNb(i){const l=near(i).filter(e=>vis(e.to));return l.length?l:adj[i].map(to=>({to,cos:0,p:null})).filter(e=>vis(e.to))}
+function draw(){
+  if(!N.length||$('#vWeb').hidden)return;
+  const focus=sel>=0?sel:hover,dimmed=focus>=0||path.length>0;
+  if(gl)drawGL(dimmed);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const zs=zsNow(),shown=new Set();
+  const curve=(a,b,col,w)=>{const x1=sx(N[a].x),y1=sy(N[a].y),x2=sx(N[b].x),y2=sy(N[b].y),mx=(x1+x2)/2+(y2-y1)*.12,my=(y1+y2)/2-(x2-x1)*.12;
+    ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo(mx,my,x2,y2);ctx.stroke();return[x1,y1,mx,my,x2,y2]};
+  const star=(i,ring)=>{const n=N[i],x=sx(n.x),y=sy(n.y),r=rad(n)*zs;ctx.fillStyle=hexA(COL[n.g],.28);ctx.beginPath();ctx.arc(x,y,r*2.3+3,0,7);ctx.fill();
+    ctx.fillStyle=COL[n.g];ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();if(ring){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r+4,0,7);ctx.stroke()}};
+  let fn=[];
+  if(focus>=0){fn=webNb(focus).slice(0,12);fn.forEach(e=>curve(focus,e.to,hexA(COL[N[e.to].g],.95),1.6))}
+  const segs=[];for(let i=0;i<path.length-1;i++)segs.push(curve(path[i],path[i+1],'#ffe066',3));
+  fn.forEach(e=>{star(e.to);shown.add(e.to)});path.forEach(i=>{star(i);shown.add(i)});if(focus>=0){star(focus,focus===sel);shown.add(focus)}
+  if(segs.length&&!reduce){const t=(performance.now()-t0)/650%segs.length,i=Math.floor(t),f=t-i,[x1,y1,mx,my,x2,y2]=segs[i];
+    const px=(1-f)**2*x1+2*(1-f)*f*mx+f*f*x2,py=(1-f)**2*y1+2*(1-f)*f*my+f*f*y2;
+    ctx.fillStyle='#fff6c2';ctx.shadowColor='#ffe066';ctx.shadowBlur=16;ctx.beginPath();ctx.arc(px,py,5,0,7);ctx.fill();ctx.shadowBlur=0}
+  if(!gl){N.forEach((n,i)=>{if(!vis(i)||shown.has(i))return;ctx.fillStyle=hexA(COL[n.g],dimmed?.2:1);ctx.beginPath();ctx.arc(sx(n.x),sy(n.y),rad(n)*zs,0,7);ctx.fill()})}
+  ctx.font='500 12px Inter,sans-serif';ctx.textBaseline='middle';const boxes=[];
+  const label=(i,strong)=>{const n=N[i];const x=sx(n.x)+rad(n)*zs+5,y=sy(n.y),t=n.t.length>32?n.t.slice(0,30)+'…':n.t,w=ctx.measureText(t).width;
+    if(x>W||y<8||y>H-8||x+w<0)return false;
+    if(!strong&&boxes.some(b=>x<b[0]+b[2]+4&&x+w+4>b[0]&&Math.abs(y-b[1])<15))return false;boxes.push([x,y,w]);
+    ctx.fillStyle='rgba(10,8,16,.8)';ctx.fillRect(x-3,y-8,w+6,16);ctx.fillStyle=strong?'#fff':'#c9c2d6';ctx.fillText(t,x,y);return true};
+  path.forEach(i=>label(i,true));
+  if(focus>=0){label(focus,true);fn.forEach(e=>label(e.to,false))}
+  if(!dimmed){let budget=Math.min(500,Math.round(14*view.s*view.s));for(const i of byPop){if(budget<=0)break;if(vis(i)&&label(i,false))budget--}}
+  if(segs.length&&!reduce)requestAnimationFrame(draw);
+}
+let raf=0;const redraw=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;draw()})};
+const pts=new Map();let drag=null,moved=0;
+ov.addEventListener('pointerdown',e=>{ov.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.offsetX,e.offsetY]);moved=0;drag={x:e.offsetX,y:e.offsetY,vx:view.x,vy:view.y};if(pts.size===2){const[a,b]=[...pts.values()];drag.pinch=Math.hypot(a[0]-b[0],a[1]-b[1]);drag.s=view.s}ov.classList.add('drag')});
+ov.addEventListener('pointermove',e=>{
+  if(pts.has(e.pointerId))pts.set(e.pointerId,[e.offsetX,e.offsetY]);
+  if(drag&&pts.size===2&&drag.pinch){const[a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]),s=Math.min(40,Math.max(.3,drag.s*d/drag.pinch)),f=s/view.s,mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;view.x=mx-(mx-view.x)*f;view.y=my-(my-view.y)*f;view.s=s;moved=99;redraw();return}
+  if(drag&&pts.size===1){const dx=e.offsetX-drag.x,dy=e.offsetY-drag.y;moved=Math.max(moved,Math.abs(dx)+Math.abs(dy));if(moved>4){view.x=drag.vx+dx;view.y=drag.vy+dy;redraw()}return}
+  const h=pick(e.offsetX,e.offsetY);if(h!==hover){hover=h;redraw()}
+  if(h>=0){const n=N[h];tip.style.display='block';tip.innerHTML=`<b>${esc(n.t)}</b><br>${esc(n.a)}`;tip.style.left=Math.min(e.offsetX+14,W-270)+'px';tip.style.top=(e.offsetY+14)+'px'}else tip.style.display='none'});
+const end=e=>{pts.delete(e.pointerId);if(!pts.size){if(drag&&moved<5)select(pick(e.offsetX,e.offsetY),false);drag=null;ov.classList.remove('drag')}else drag=null};
+ov.addEventListener('pointerup',end);ov.addEventListener('pointercancel',end);
+ov.addEventListener('pointerleave',()=>{if(!drag){hover=-1;tip.style.display='none';redraw()}});
+ov.addEventListener('wheel',e=>{e.preventDefault();const s=Math.min(40,Math.max(.3,view.s*Math.exp(-e.deltaY*.0015))),f=s/view.s;view.x=e.offsetX-(e.offsetX-view.x)*f;view.y=e.offsetY-(e.offsetY-view.y)*f;view.s=s;redraw()},{passive:false});
+$('#fit').onclick=()=>{fitView();draw()};
+
+const pill=(c,t)=>`<span class="pill">${c?`<i style="background:${c}"></i>`:''}${esc(t)}</span>`;
+const bandLabel=n=>{const b=BANDS[n.band];return b[2]>=99?`${b[0]}, ${b[1]}+`:`${b[0]}, ${b[1]} to ${b[2]}`};
+function select(i,move){sel=i;if(i>=0&&move){const n=N[i];view.s=Math.max(view.s,5);view.x=W/2-n.x*view.s;view.y=H/2-n.y*view.s}info();draw()}
+function info(){
+  const el=$('#info');
+  if(sel<0){el.innerHTML=`<h2>Pick a book</h2><p class="empty">Tap any star or search above. Books that share lots of readers pull together, so shelves form clusters, and lines between clusters are the surprising jumps. Set an age at the top to show only books that suit it.</p>`;return}
+  const n=N[sel],l=webNb(sel).slice(0,12);
+  el.innerHTML=`<h2>${esc(n.t)}</h2><p class="by">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
+   <div class="meta">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${pill('',n.r.toFixed(2)+' average')}${pill('',fmt(n.n)+' ratings')}</div>
+   ${n.s?`<p class="by">Series: ${esc(n.s)}</p>`:''}
+   <h3>Fans of this book also loved${age!==null?' (suits the age you picked)':''}</h3><div class="list">${l.map(e=>{const m=N[e.to];return `<button class="lk" data-i="${e.to}" type="button"><b>${esc(m.t)}</b><span>${esc(m.a)} · ${SH[m.g]}</span><em>${e.p===null?'':e.p+'%'}</em></button>`}).join('')||'<p class="empty">No close matches suit this age.</p>'}</div>
+   <p class="small">% = share of this book's fans who also rated that one 4 or 5 stars.</p>
+   <div class="row"><button class="btn" type="button" id="asFrom">Start a journey here</button><button class="btn" type="button" id="toFind">Find more like this</button></div>`;
+  $('#asFrom').onclick=()=>{$('#from').value=n.t;$('#to').focus()};
+  $('#toFind').onclick=()=>{if(!loved.includes(sel))loved.push(sel);renderLoved();location.hash='find'};
+}
+$('#info').addEventListener('click',e=>{const b=e.target.closest('.lk');if(b)select(+b.dataset.i,true)});
+$('#q').addEventListener('change',e=>{const i=find(e.target.value);if(i>=0)select(i,true)});
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){const i=find(e.target.value);if(i>=0)select(i,true)}});
+
+// journey: shortest chain over the web's links
+function bfs(a,b){const prev=new Int32Array(N.length).fill(-2);prev[a]=-1;const q=[a];let h=0;
+  while(h<q.length){const u=q[h++];if(u===b)break;for(const v of adj[u])if(prev[v]===-2&&vis(v)){prev[v]=u;q.push(v)}}
+  if(prev[b]===-2)return null;const p=[];for(let v=b;v!==-1;v=prev[v])p.unshift(v);return p}
+$('#route').onclick=()=>{
+  const a=find($('#from').value),b=find($('#to').value),o=$('#pathOut');
+  if(a<0||b<0){o.innerHTML='<p class="empty">Pick both books from the list.</p>';return}
+  if(!vis(a)||!vis(b)){o.innerHTML='<p class="empty">One of those books is hidden by the age or shelf filter.</p>';return}
+  const p=bfs(a,b);if(!p){o.innerHTML='<p class="empty">No route with the current filters. Try a different age or turn shelves back on.</p>';return}
+  path=p;t0=performance.now();sel=-1;info();
+  o.innerHTML=`<p class="empty">${p.length} books, ${p.length-1} steps.</p><ol class="path">${p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;return `<li>${esc(N[i].t)}${e?`<small>${e.p}% of the last book's fans loved this</small>`:''}</li>`}).join('')}</ol>`;
+  const xs=p.map(i=>N[i].x),ys=p.map(i=>N[i].y),bw=Math.max(...xs)-Math.min(...xs)+40,bh=Math.max(...ys)-Math.min(...ys)+40;
+  view.s=Math.min(14,Math.min(W/bw,H/bh)*.85);view.x=W/2-(Math.min(...xs)+Math.max(...xs))/2*view.s;view.y=H/2-(Math.min(...ys)+Math.max(...ys))/2*view.s;draw()};
+$('#clear').onclick=()=>{path=[];$('#pathOut').innerHTML='';$('#from').value='';$('#to').value='';draw()};
+$('#key').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const g=+c.dataset.g;hiddenShelf.has(g)?hiddenShelf.delete(g):hiddenShelf.add(g);c.setAttribute('aria-pressed',!hiddenShelf.has(g));rebuild()});
+
+/* ---------- finder ---------- */
+let loved=[],fShelf=new Set(),shown=24,results=[];
+function renderLoved(){$('#loved').innerHTML=loved.map((i,k)=>`<span class="lv">${esc(N[i].t)}<button type="button" data-k="${k}" aria-label="Remove ${esc(N[i].t)}">×</button></span>`).join('')||'<span class="small">None yet. Without favourites you get the best-loved books for the age.</span>'}
+$('#loved').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;loved.splice(+b.dataset.k,1);renderLoved();runFind()});
+const addLoved=()=>{const i=find($('#addIn').value);if(i<0){$('#addIn').setCustomValidity('Pick a book from the list');$('#addIn').reportValidity();return}
+  $('#addIn').setCustomValidity('');if(!loved.includes(i))loved.push(i);$('#addIn').value='';renderLoved();runFind()};
+$('#addBtn').onclick=addLoved;$('#addIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addLoved()}});
+$('#series').addEventListener('change',runFind);
+$('#reset').onclick=()=>{loved=[];fShelf.clear();document.querySelectorAll('#fShelf .chip').forEach(c=>c.setAttribute('aria-pressed','false'));renderLoved();runFind()};
+$('#fShelf').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const g=+c.dataset.g;fShelf.has(g)?fShelf.delete(g):fShelf.add(g);c.setAttribute('aria-pressed',fShelf.has(g));runFind()});
+$('#moreBtn').onclick=()=>{shown+=24;paint()};
+const okFind=i=>fitsAge(i)&&(!fShelf.size||fShelf.has(N[i].g));
+function runFind(){
+  if(!N.length||$('#vFind').hidden)return;shown=24;
+  const inc=$('#series').checked,inSeries=new Set(loved.map(i=>N[i].s).filter(Boolean)),inSet=new Set(loved);
+  const skip=i=>inSet.has(i)||(!inc&&N[i].s&&inSeries.has(N[i].s));
+  if(!loved.length){
+    results=byPop.filter(okFind).map(i=>({i,sc:N[i].r+.18*Math.log10(N[i].n),why:''})).sort((a,b)=>b.sc-a.sc);
+    $('#resTitle').textContent=age===null?'Best-loved books':`Best-loved books for a ${age===18?'grown-up':age+'-year-old'}`;
+    $('#resNote').textContent='Ranked by rating and how widely they are read';paint();return}
+  if(!NEAR){$('#results').innerHTML='<p class="empty">Loading the matches…</p>';return}
+  // score each candidate against every favourite: direct match, or one step through a close neighbour
+  const per=loved.map(src=>{const m=new Map(),d=near(src);
+    d.forEach(e=>m.set(e.to,{s:e.cos,p:e.p,via:-1}));
+    d.slice(0,25).forEach(e=>near(e.to).forEach(f=>{if(f.to===src)return;const s=e.cos*f.cos*.8,o=m.get(f.to);if(!o||(o.via!==-1&&o.s<s))m.set(f.to,{s,p:null,via:e.to})}));
+    return m});
+  const cand=new Set();per.forEach(m=>m.forEach((_,k)=>cand.add(k)));
+  results=[];
+  cand.forEach(c=>{if(skip(c)||!okFind(c))return;let cov=0,lg=0;
+    per.forEach(m=>{const o=m.get(c);if(o){cov++;lg+=Math.log(o.s+.002)}else lg+=Math.log(.002)});
+    results.push({i:c,cov,sc:cov*10+lg/loved.length,m:per.map(m=>m.get(c))})});
+  results.sort((a,b)=>b.sc-a.sc);
+  const full=results.filter(r=>r.cov===loved.length).length;
+  $('#resTitle').textContent=loved.length===1?`Because they loved ${N[loved[0]].t}`:`Matches for all ${loved.length} favourites`;
+  $('#resNote').textContent=loved.length>1&&full<6?`Only ${full} books link to every favourite, so the rest fit most of them.`:(age===null?'':`Filtered for age ${age===18?'18+':age}`);
+  paint()}
+function paint(){
+  const out=results.slice(0,shown);
+  $('#results').innerHTML=out.map(r=>{const n=N[r.i];
+    const why=r.m?r.m.map((o,k)=>{const src=esc(N[loved[k]].t);if(!o)return `<span>Not linked to ${src}</span>`;
+      if(o.p!==null&&o.p!==undefined&&o.via===-1)return `<span><b>${o.p}%</b> of ${src} fans loved it</span>`;
+      return `<span>Linked to ${src} through ${esc(N[o.via]?N[o.via].t:'a similar book')}</span>`}).join('<br>'):'';
+    return `<article class="bk" style="--c:${COL[n.g]}"><h3>${esc(n.t)}</h3><p class="by" style="margin:0;font-size:14px">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
+      <div class="meta" style="margin:0">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${pill('',n.r.toFixed(2)+' ★')}</div>
+      ${why?`<p class="why">${why}</p>`:''}
+      <div class="acts"><button class="btn" type="button" data-add="${r.i}">They loved it</button><button class="btn" type="button" data-web="${r.i}">See in the web</button></div></article>`}).join('')||'<p class="empty">Nothing matches. Try another age, fewer shelves, or different favourites.</p>';
+  $('#moreBtn').hidden=results.length<=shown}
+$('#results').addEventListener('click',e=>{const a=e.target.closest('[data-add]'),w=e.target.closest('[data-web]');
+  if(a){const i=+a.dataset.add;if(!loved.includes(i))loved.push(i);renderLoved();runFind();scrollTo({top:0,behavior:reduce?'auto':'smooth'})}
+  if(w){const i=+w.dataset.web;location.hash='web';requestAnimationFrame(()=>{resize();if(!vis(i)){age=null;$('#age').value='';ageNote();rebuild()}select(i,true)})}});
+
+/* ---------- load ---------- */
+fetch('web.json').then(r=>r.json()).then(d=>{
+  SH=d.shelves;BANDS=d.bands;N=d.nodes.map(([t,s,a,year,g,band,r,n,x,y])=>({t,s,a,year,g,band,r,n,x,y}));E=d.edges;
+  adj=N.map(()=>[]);E.forEach(([a,b])=>{adj[a].push(b);adj[b].push(a)});
+  byPop=N.map((_,i)=>i).sort((a,b)=>N[b].n-N[a].n);byPop.forEach(i=>{const k=N[i].t.toLowerCase();if(!titleIdx.has(k))titleIdx.set(k,i)});
+  $('#sB').textContent=N.length.toLocaleString();$('#sL').textContent=E.length.toLocaleString();
+  $('#titles').innerHTML=byPop.map(i=>`<option value="${esc(N[i].t)}">${esc(N[i].a)}</option>`).join('');
+  const cnt=g=>N.filter(n=>n.g===g).length;
+  $('#key').innerHTML=SH.map((g,gi)=>`<button class="chip" type="button" aria-pressed="true" data-g="${gi}"><i style="background:${COL[gi]}"></i>${g} <span>${cnt(gi).toLocaleString()}</span></button>`).join('');
+  $('#fShelf').innerHTML=SH.map((g,gi)=>`<button class="chip" type="button" aria-pressed="false" data-g="${gi}"><i style="background:${COL[gi]}"></i>${g}</button>`).join('');
+  age=$('#age').value===''?null:+$('#age').value;
+  if(!initGL())$('#load').insertAdjacentHTML('afterend','');
+  $('#load').remove();renderLoved();ageNote();info();route();rebuild();
+  return fetch('near.json').then(r=>r.json()).then(nj=>{K=nj.k;const s=atob(nj.b64);NEAR=new Uint8Array(s.length);for(let i=0;i<s.length;i++)NEAR[i]=s.charCodeAt(i);info();runFind();draw()});
+}).catch(()=>{$('#load').textContent='Could not load the book data. Try reloading the page.'});
+const ro=new ResizeObserver(resize);ro.observe(fig);
+if(!location.hash)history.replaceState(null,'','#web');
+}
+</script>
+</body></html>
