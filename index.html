@@ -142,7 +142,7 @@ footer a{color:inherit}
     <label for="addIn">Books they loved</label>
     <div class="add"><input id="addIn" list="titles" placeholder="e.g. Wonder"><button class="btn" id="addBtn" type="button">Add</button></div>
     <div class="loved" id="loved"></div>
-    <label class="check"><input type="checkbox" id="series"> Include more books from the same series</label>
+    <label class="check"><input type="checkbox" id="series"> Also show books by the same authors or from the same series</label>
     <label style="margin-top:16px">Only these shelves (optional)</label>
     <div class="shelfpick" id="fShelf"></div>
     <div class="row"><button class="btn" id="reset" type="button">Start again</button></div>
@@ -335,7 +335,8 @@ const okFind=i=>fitsAge(i)&&(!fShelf.size||fShelf.has(N[i].g));
 function runFind(){
   if(!N.length||$('#vFind').hidden)return;shown=24;
   const inc=$('#series').checked,inSeries=new Set(loved.map(i=>N[i].s).filter(Boolean)),inSet=new Set(loved);
-  const skip=i=>inSet.has(i)||(!inc&&N[i].s&&inSeries.has(N[i].s));
+  const inAuth=new Set(loved.map(i=>N[i].a.toLowerCase()));
+  const skip=i=>inSet.has(i)||(!inc&&((N[i].s&&inSeries.has(N[i].s))||inAuth.has(N[i].a.toLowerCase())));
   if(!loved.length){
     results=byPop.filter(okFind).map(i=>({i,sc:N[i].r+.18*Math.log10(N[i].n),why:''})).sort((a,b)=>b.sc-a.sc);
     $('#resTitle').textContent=age===null?'Best-loved books':`Best-loved books for a ${age===18?'grown-up':age+'-year-old'}`;
@@ -356,7 +357,10 @@ function runFind(){
   $('#resTitle').textContent=loved.length===1?`Because they loved ${N[loved[0]].t}`:`Matches for all ${loved.length} favourites`;
   $('#resNote').textContent=loved.length>1&&full<6?`Only ${full} books link to every favourite, so the rest fit most of them.`:(age===null?'':`Filtered for age ${age===18?'18+':age}`);
   paint()}
+function onePerAuthor(){if($('#series').checked)return;const seen=new Set();
+  results=results.filter(r=>{const k=N[r.i].a.toLowerCase(),s=N[r.i].s?'s:'+N[r.i].s.toLowerCase():'';if(seen.has(k)||(s&&seen.has(s)))return false;seen.add(k);if(s)seen.add(s);return true})}
 function paint(){
+  onePerAuthor();
   const out=results.slice(0,shown);
   $('#results').innerHTML=out.map(r=>{const n=N[r.i];
     const why=r.m?r.m.map((o,k)=>{const src=esc(N[loved[k]].t);if(!o)return `<span>Not linked to ${src}</span>`;
