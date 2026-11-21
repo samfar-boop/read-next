@@ -92,6 +92,30 @@ footer{margin-top:22px;color:var(--mute);font-size:13px;border-top:1px solid var
 footer a{color:inherit}
 @media(max-width:960px){.main,.find{grid-template-columns:minmax(0,1fr)}.fig{height:70vh}.form{position:static}}
 @media(max-width:600px){.stats b{font-size:22px}.hint{display:none}.tabs a{padding:0 12px}}
+/* covers, cards, ladder, list */
+.tabs{flex-wrap:wrap}
+.cv{position:relative;display:block;width:72px;aspect-ratio:2/3;border-radius:5px;overflow:hidden;background:var(--c);flex:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.cv b{position:absolute;inset:0;padding:6px;font:600 10px/1.25 Inter,sans-serif;color:rgba(0,0,0,.78);overflow:hidden;background:linear-gradient(160deg,rgba(255,255,255,.35),rgba(255,255,255,0) 60%)}
+.cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--c);opacity:0;transition:opacity .2s}.cv img.ok{opacity:1}
+.bk{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:start}
+.bk .bd{display:flex;flex-direction:column;gap:6px}
+.bk .acts{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:4px}
+.bk .acts button{min-height:38px;font-size:13px;padding:0 6px}
+.bk .acts .on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.lnk{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;margin:2px 0 0}
+.lnk a,.linkbtn{color:var(--ink);text-decoration:underline;text-underline-offset:2px;background:none;border:0;padding:0;min-height:auto;font:inherit;cursor:pointer}
+.sec{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.sec h3{font:600 14px Inter,sans-serif;margin:0 0 6px;color:var(--mute)}
+.bar select{max-width:220px}
+.ladder{list-style:none;padding:0;margin:14px 0 0}
+.ladder li{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;margin:0 0 12px;margin-left:min(calc(var(--k)*3.2%),28%)}
+.ladder .ag{font:700 16px/1.2 Syne,sans-serif;text-align:right;padding-top:14px}
+.ladder .ag small{display:block;font:500 12px Inter,sans-serif;color:var(--mute)}
+.infotop{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:start}
+.infotop .cv{width:64px}
+#lMsg{min-height:1.4em}
+@media(max-width:600px){.ladder li{margin-left:0;grid-template-columns:60px minmax(0,1fr)}.ladder .ag{font-size:14px}}
+@media print{header,.bar,footer,#vWeb,#vFind,#vLadder,.noprint,.acts,.lnk,.warn{display:none!important}#vList{display:block!important}body{background:#fff;color:#000}.bk{break-inside:avoid;border:1px solid #ccc}}
 </style></head>
 <body>
 <div class="wrap">
@@ -102,8 +126,9 @@ footer a{color:inherit}
 </header>
 
 <div class="bar">
-  <nav class="tabs" aria-label="Views"><a href="#web" id="tWeb">The web</a><a href="#find" id="tFind">Find books for a kid</a></nav>
-  <label class="age" for="age">Reader's age
+  <nav class="tabs" aria-label="Views"><a href="#web" id="tWeb">The web</a><a href="#find" id="tFind">Find books for a kid</a><a href="#ladder" id="tLadder">Reading ladder</a><a href="#list" id="tList">My list (0)</a></nav>
+  <label class="age" for="kid">Reader <select id="kid"></select></label>
+  <label class="age" for="age">Age
     <select id="age"><option value="">Any age</option></select></label>
   <span class="agenote" id="ageNote"></span>
 </div>
@@ -142,6 +167,8 @@ footer a{color:inherit}
     <label for="addIn">Books they loved</label>
     <div class="add"><input id="addIn" list="titles" placeholder="e.g. Wonder"><button class="btn" id="addBtn" type="button">Add</button></div>
     <div class="loved" id="loved"></div>
+    <div class="sec"><h3>Already read</h3><div class="loved" id="readBox"></div></div>
+    <div class="sec"><h3>Not for them</h3><div class="loved" id="nopeBox"></div></div>
     <label class="check"><input type="checkbox" id="series"> Also show books by the same authors or from the same series</label>
     <label style="margin-top:16px">Only these shelves (optional)</label>
     <div class="shelfpick" id="fShelf"></div>
@@ -154,6 +181,32 @@ footer a{color:inherit}
     <p class="warn">Age bands are estimates from how thousands of Goodreads readers tagged each book (picture book, middle grade, young adult, school reading and so on). They are a starting point, not a content rating. Check any book you're unsure about at <a href="https://www.commonsensemedia.org/book-reviews">Common Sense Media</a> before handing it over.</p>
   </div>
 </div>
+</section>
+
+<section class="view" id="vLadder" hidden>
+<div class="find">
+  <div class="card form">
+    <h2>Build a reading ladder</h2>
+    <p class="small" style="margin:6px 0 0">Start from a book they love now. Each step is loved by fans of the step before and aimed a little older, so their reading grows with them. Books they've read or didn't like are skipped.</p>
+    <label for="ladStart">Starting book</label><input id="ladStart" list="titles" placeholder="e.g. The Wishing Spell">
+    <label for="ladFrom">Their age now</label><select id="ladFrom"></select>
+    <label for="ladTo">Climb up to age</label><select id="ladTo"></select>
+    <div class="row"><button class="go" id="ladGo" type="button">Build the ladder</button></div>
+    <p class="small" id="ladNote" aria-live="polite"></p>
+  </div>
+  <div>
+    <div class="res-head"><h2 id="ladTitle">Your ladder</h2><span class="small" id="ladSub"></span></div>
+    <ol class="ladder" id="ladOut"><li style="display:block;margin:0"><p class="empty">Pick a starting book and ages, then build the ladder.</p></li></ol>
+    <div class="row noprint" id="ladActs" hidden><button class="btn" id="ladList" type="button">Add every step to my list</button><button class="btn" id="ladWeb" type="button">See it on the web</button></div>
+  </div>
+</div>
+</section>
+
+<section class="view" id="vList" hidden>
+  <div class="res-head" style="margin-top:16px"><h2 id="listTitle">My reading list</h2><span class="small" id="listSub"></span></div>
+  <div class="row noprint"><button class="go" id="lCopy" type="button">Copy share link</button><button class="btn" id="lText" type="button">Copy as text</button><button class="btn" id="lPrint" type="button">Print</button><button class="btn" id="lClear" type="button">Clear list</button><button class="go" id="lSave" type="button" hidden>Save to my list</button></div>
+  <p class="small" id="lMsg" aria-live="polite"></p>
+  <div class="grid" id="listOut"></div>
 </section>
 
 <datalist id="titles"></datalist>
@@ -175,15 +228,16 @@ let age=null,hiddenShelf=new Set();
 /* ---------- shared: age ---------- */
 for(let a=2;a<=17;a++)$('#age').insertAdjacentHTML('beforeend',`<option value="${a}">${a} years old</option>`);
 $('#age').insertAdjacentHTML('beforeend','<option value="18">18 or older</option>');
-try{const s=localStorage.getItem('rn-age');if(s!==null){$('#age').value=s}}catch(e){}
 const fitsAge=i=>{if(age===null)return true;const b=BANDS[N[i].band];return age>=b[1]&&age<=b[2]};
-$('#age').addEventListener('change',()=>{age=$('#age').value===''?null:+$('#age').value;try{localStorage.setItem('rn-age',$('#age').value)}catch(e){}ageNote();rebuild();runFind()});
+$('#age').addEventListener('change',()=>{age=$('#age').value===''?null:+$('#age').value;save();ageNote();rebuild();runFind()});
 function ageNote(){if(!N.length)return;$('#ageNote').textContent=age===null?'':`${N.filter((_,i)=>fitsAge(i)).length.toLocaleString()} books suit this age`}
 
 /* ---------- views ---------- */
-function route(){const f=location.hash==='#find';$('#vWeb').hidden=f;$('#vFind').hidden=!f;
-  $('#tWeb').toggleAttribute('aria-current',!f);$('#tFind').toggleAttribute('aria-current',f);
-  if(f){$('#tFind').setAttribute('aria-current','page');runFind()}else{$('#tWeb').setAttribute('aria-current','page');resize()}}
+let shared=null;
+function route(){if(!N.length)return;const h=location.hash,v=h.startsWith('#list')?'List':h==='#find'?'Find':h==='#ladder'?'Ladder':'Web';
+  ['Web','Find','Ladder','List'].forEach(x=>{$('#v'+x).hidden=x!==v;const t=$('#t'+x);t.removeAttribute('aria-current');if(x===v)t.setAttribute('aria-current','page')});
+  shared=h.startsWith('#list=')?h.slice(6).split('.').map(x=>parseInt(x,36)).filter(i=>i>=0&&i<N.length):null;
+  if(v==='Find')runFind();else if(v==='Web')resize();else if(v==='List')renderList();else ladderDefaults()}
 addEventListener('hashchange',route);
 
 const find=v=>{v=(v||'').trim().toLowerCase();if(!v)return -1;if(titleIdx.has(v))return titleIdx.get(v);const i=byPop.find(k=>N[k].t.toLowerCase().includes(v)||N[k].a.toLowerCase().includes(v));return i===undefined?-1:i};
@@ -291,14 +345,18 @@ function info(){
   const el=$('#info');
   if(sel<0){el.innerHTML=`<h2>Pick a book</h2><p class="empty">Tap any star or search above. Books that share lots of readers pull together, so shelves form clusters, and lines between clusters are the surprising jumps. Set an age at the top to show only books that suit it.</p>`;return}
   const n=N[sel],l=webNb(sel).slice(0,12);
-  el.innerHTML=`<h2>${esc(n.t)}</h2><p class="by">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
+  el.innerHTML=`<div class="infotop">${cover(sel)}<div><h2>${esc(n.t)}</h2><p class="by">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p></div></div>
    <div class="meta">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${n.n?pill('',n.r.toFixed(2)+' average')+pill('',fmt(n.n)+' ratings'):pill('','Added by hand')}</div>
    ${n.s?`<p class="by">Series: ${esc(n.s)}</p>`:''}
    <h3>${n.n?'Fans of this book also loved':'Books with similar themes and age'}${age!==null?' (suits the age you picked)':''}</h3><div class="list">${l.map(e=>{const m=N[e.to];return `<button class="lk" data-i="${e.to}" type="button"><b>${esc(m.t)}</b><span>${esc(m.a)} · ${SH[m.g]}</span><em>${e.p===null?'':e.p===255?'theme':e.p+'%'}</em></button>`}).join('')||'<p class="empty">No close matches suit this age.</p>'}</div>
    <p class="small">% = share of this book's fans who also rated that one 4 or 5 stars. "theme" = a hand-added book matched on themes and age, as it has no reader ratings.</p>
-   <div class="row"><button class="btn" type="button" id="asFrom">Start a journey here</button><button class="btn" type="button" id="toFind">Find more like this</button></div>`;
+   <p class="lnk">${links(sel)}</p>
+   <div class="row"><button class="btn" type="button" id="asFrom">Start a journey here</button><button class="btn" type="button" id="toFind">Find more like this</button></div>
+   <div class="row"><button class="btn${list.includes(sel)?' on':''}" type="button" data-act="list" data-i="${sel}" aria-pressed="${list.includes(sel)}">${list.includes(sel)?'On my list':'Add to my list'}</button><button class="btn" type="button" id="toLadder">Build a ladder from here</button></div>`;
+  hydrate(el);
+  $('#toLadder').onclick=()=>{$('#ladStart').value=n.t;location.hash='ladder'};
   $('#asFrom').onclick=()=>{$('#from').value=n.t;$('#to').focus()};
-  $('#toFind').onclick=()=>{if(!loved.includes(sel))loved.push(sel);renderLoved();location.hash='find'};
+  $('#toFind').onclick=()=>{if(!loved.includes(sel))loved.push(sel);save();renderLoved();location.hash='find'};
 }
 $('#info').addEventListener('click',e=>{const b=e.target.closest('.lk');if(b)select(+b.dataset.i,true)});
 $('#q').addEventListener('change',e=>{const i=find(e.target.value);if(i>=0)select(i,true)});
@@ -313,32 +371,104 @@ $('#route').onclick=()=>{
   if(a<0||b<0){o.innerHTML='<p class="empty">Pick both books from the list.</p>';return}
   if(!vis(a)||!vis(b)){o.innerHTML='<p class="empty">One of those books is hidden by the age or shelf filter.</p>';return}
   const p=bfs(a,b);if(!p){o.innerHTML='<p class="empty">No route with the current filters. Try a different age or turn shelves back on.</p>';return}
-  path=p;t0=performance.now();sel=-1;info();
+  showPath(p);
   o.innerHTML=`<p class="empty">${p.length} books, ${p.length-1} steps.</p><ol class="path">${p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;return `<li>${esc(N[i].t)}${e?`<small>${e.p===255?'Similar themes and age to the last book':e.p+"% of the last book's fans loved this"}</small>`:''}</li>`}).join('')}</ol>`;
+};
+function showPath(p){path=p;t0=performance.now();sel=-1;info();
   const xs=p.map(i=>N[i].x),ys=p.map(i=>N[i].y),bw=Math.max(...xs)-Math.min(...xs)+40,bh=Math.max(...ys)-Math.min(...ys)+40;
-  view.s=Math.min(14,Math.min(W/bw,H/bh)*.85);view.x=W/2-(Math.min(...xs)+Math.max(...xs))/2*view.s;view.y=H/2-(Math.min(...ys)+Math.max(...ys))/2*view.s;draw()};
+  view.s=Math.min(14,Math.min(W/bw,H/bh)*.85);view.x=W/2-(Math.min(...xs)+Math.max(...xs))/2*view.s;view.y=H/2-(Math.min(...ys)+Math.max(...ys))/2*view.s;draw()}
 $('#clear').onclick=()=>{path=[];$('#pathOut').innerHTML='';$('#from').value='';$('#to').value='';draw()};
 $('#key').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const g=+c.dataset.g;hiddenShelf.has(g)?hiddenShelf.delete(g):hiddenShelf.add(g);c.setAttribute('aria-pressed',!hiddenShelf.has(g));rebuild()});
 
+/* ---------- covers and links ---------- */
+let COVER=[],ISBN=[];
+const olCache=(()=>{try{return JSON.parse(localStorage.getItem('rn-olc')||'{}')}catch(e){return{}}})();
+const srcs=i=>{const o=[];if(COVER[i])o.push(`https://images.gr-assets.com/books/${COVER[i]}.jpg`);if(ISBN[i])o.push(`https://covers.openlibrary.org/b/isbn/${ISBN[i]}-M.jpg?default=false`);o.push('search');return o};
+function cover(i){const n=N[i],s=srcs(i)[0];return `<span class="cv" style="--c:${COL[n.g]}" aria-hidden="true"><b>${esc(n.t)}</b><img alt="" loading="lazy" data-i="${i}" data-s="0"${s!=='search'?` src="${s}"`:''}></span>`}
+function olLookup(img){const i=+img.dataset.i,n=N[i],k=(n.t+'|'+n.a).toLowerCase();
+  const use=id=>{if(id)img.src=`https://covers.openlibrary.org/b/id/${id}-M.jpg`;else img.remove()};
+  if(k in olCache)return use(olCache[k]);
+  fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(n.t)}&author=${encodeURIComponent(n.a.split(' and ')[0])}&limit=1&fields=cover_i`)
+    .then(r=>r.json()).then(j=>{const id=(j.docs&&j.docs[0]&&j.docs[0].cover_i)||0;olCache[k]=id;try{localStorage.setItem('rn-olc',JSON.stringify(olCache))}catch(e){}use(id)})
+    .catch(()=>img.remove())}
+function nextCover(img){const s=srcs(+img.dataset.i),k=+img.dataset.s+1;img.dataset.s=k;
+  if(k>=s.length){img.remove();return}if(s[k]==='search')olLookup(img);else img.src=s[k]}
+document.addEventListener('load',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.dataset.i!==undefined){if(t.naturalWidth<5)nextCover(t);else t.classList.add('ok')}},true);
+document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.dataset.i!==undefined)nextCover(t)},true);
+function hydrate(root){root.querySelectorAll('img[data-i]:not([src])').forEach(img=>{if(img.dataset.ol)return;img.dataset.ol=1;olLookup(img)})}
+const qy=i=>encodeURIComponent(N[i].t+' '+N[i].a.split(' and ')[0]);
+const links=i=>`<a href="https://trove.nla.gov.au/search/category/books?keyword=${qy(i)}" target="_blank" rel="noopener">Find at a library</a><a href="https://booko.com.au/search?q=${qy(i)}" target="_blank" rel="noopener">Buy</a>`;
+const sk=x=>x?x.toLowerCase().split(/[:#(]/)[0].replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,' ').trim():'';
+const yr=n=>n.year?', '+(n.year<0?(-n.year)+' BC':n.year):'';
+
+/* ---------- readers (saved in this browser) ---------- */
+const KEY=i=>(N[i].t+'|'+N[i].a).toLowerCase();
+const keyIdx=new Map();
+let ST={cur:0,kids:[{name:'My reader',age:'',loved:[],read:[],nope:[]}],list:[]};
+try{const x=JSON.parse(localStorage.getItem('rn-state'));if(x&&x.kids&&x.kids.length)ST=x;else{const a=localStorage.getItem('rn-age');if(a!==null)ST.kids[0].age=a}}catch(e){}
+const kid=()=>ST.kids[ST.cur]||ST.kids[0];
+const toIdx=a=>(a||[]).map(k=>keyIdx.get(k)).filter(i=>i!==undefined);
+let loved=[],readS=new Set(),nope=new Set(),list=[],fShelf=new Set(),shown=24,results=[];
+function loadKid(){const k=kid();loved=toIdx(k.loved);readS=new Set(toIdx(k.read));nope=new Set(toIdx(k.nope));list=toIdx(ST.list);
+  $('#age').value=k.age??'';age=$('#age').value===''?null:+$('#age').value}
+function save(){const k=kid();k.loved=loved.map(KEY);k.read=[...readS].map(KEY);k.nope=[...nope].map(KEY);k.age=$('#age').value;ST.list=list.map(KEY);
+  try{localStorage.setItem('rn-state',JSON.stringify(ST))}catch(e){}$('#tList').textContent=`My list (${list.length})`}
+function renderProfiles(){$('#kid').innerHTML=ST.kids.map((k,i)=>`<option value="${i}">${esc(k.name)}</option>`).join('')+
+  '<option value="new">Add another reader…</option><option value="ren">Rename this reader…</option>'+(ST.kids.length>1?'<option value="del">Remove this reader</option>':'');
+  $('#kid').value=String(ST.cur)}
+$('#kid').addEventListener('change',e=>{const v=e.target.value;
+  if(v==='new'){const nm=prompt('Name of the new reader?','Reader '+(ST.kids.length+1));if(nm&&nm.trim()){ST.kids.push({name:nm.trim().slice(0,30),age:'',loved:[],read:[],nope:[]});ST.cur=ST.kids.length-1}}
+  else if(v==='ren'){const nm=prompt('New name for this reader?',kid().name);if(nm&&nm.trim())kid().name=nm.trim().slice(0,30)}
+  else if(v==='del'){if(confirm(`Remove ${kid().name} and their saved books?`)){ST.kids.splice(ST.cur,1);ST.cur=0}}
+  else ST.cur=+v;
+  try{localStorage.setItem('rn-state',JSON.stringify(ST))}catch(e){}
+  loadKid();renderProfiles();renderLoved();ageNote();rebuild();info();route()});
+
+/* ---------- shared book card ---------- */
+function card(i,why){const n=N[i],on=list.includes(i);
+  return `<article class="bk" style="--c:${COL[n.g]}">${cover(i)}<div class="bd"><h3>${esc(n.t)}</h3><p class="by" style="margin:0;font-size:14px">${esc(n.a)}${yr(n)}</p>
+    <div class="meta" style="margin:0">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${n.n?pill('',n.r.toFixed(2)+' ★'):pill('','Added by hand')}</div>
+    ${why?`<p class="why">${why}</p>`:''}
+    <div class="acts"><button class="btn" type="button" data-act="loved" data-i="${i}">Loved it</button><button class="btn" type="button" data-act="read" data-i="${i}">Read it</button><button class="btn" type="button" data-act="nope" data-i="${i}">Not for them</button><button class="btn${on?' on':''}" type="button" data-act="list" data-i="${i}" aria-pressed="${on}">${on?'On my list':'Add to list'}</button></div>
+    <p class="lnk">${links(i)}<button class="linkbtn" type="button" data-act="web" data-i="${i}">See in the web</button></p></div></article>`}
+function goWeb(i){location.hash='web';requestAnimationFrame(()=>{resize();if(!vis(i)){age=null;$('#age').value='';ageNote();rebuild()}select(i,true)})}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const i=+b.dataset.i,act=b.dataset.act;
+  if(act==='web')return goWeb(i);
+  if(act==='list'){const k=list.indexOf(i);k<0?list.push(i):list.splice(k,1);save();const on=list.includes(i);
+    document.querySelectorAll(`[data-act="list"][data-i="${i}"]`).forEach(x=>{x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);x.textContent=on?(x.closest('#info')?'On my list':'On my list'):(x.closest('#info')?'Add to my list':'Add to list')});
+    if(!$('#vList').hidden)renderList();return}
+  if(act==='loved'){if(!loved.includes(i))loved.push(i);readS.delete(i);nope.delete(i)}
+  if(act==='read'){readS.add(i);nope.delete(i)}
+  if(act==='nope'){nope.add(i);loved=loved.filter(x=>x!==i)}
+  save();renderLoved();
+  if(!$('#vFind').hidden){runFind();if(act==='loved')scrollTo({top:0,behavior:reduce?'auto':'smooth'})}
+  else{const art=b.closest('.bk');if(art&&act!=='loved'){art.style.opacity=.45;b.textContent=act==='read'?'Marked read':'Marked'}else if(art)b.textContent='Added'}});
+
 /* ---------- finder ---------- */
-let loved=[],fShelf=new Set(),shown=24,results=[];
-function renderLoved(){$('#loved').innerHTML=loved.map((i,k)=>`<span class="lv">${esc(N[i].t)}<button type="button" data-k="${k}" aria-label="Remove ${esc(N[i].t)}">×</button></span>`).join('')||'<span class="small">None yet. Without favourites you get the best-loved books for the age.</span>'}
-$('#loved').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;loved.splice(+b.dataset.k,1);renderLoved();runFind()});
+const chips=(arr,kind)=>arr.map(i=>`<span class="lv">${esc(N[i].t)}<button type="button" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(N[i].t)}">×</button></span>`).join('');
+function renderLoved(){
+  $('#loved').innerHTML=chips(loved,'loved')||'<span class="small">None yet. Without favourites you get the best-loved books for the age.</span>';
+  $('#readBox').innerHTML=chips([...readS],'read')||'<span class="small">Tap "Read it" on a book and it stops showing up.</span>';
+  $('#nopeBox').innerHTML=chips([...nope],'nope')||'<span class="small">Tap "Not for them" and books like it drop down the list.</span>'}
+$('#vFind').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;const i=+b.dataset.i,k=b.dataset.kind;
+  if(k==='loved')loved=loved.filter(x=>x!==i);if(k==='read')readS.delete(i);if(k==='nope')nope.delete(i);save();renderLoved();runFind()});
 const addLoved=()=>{const i=find($('#addIn').value);if(i<0){$('#addIn').setCustomValidity('Pick a book from the list');$('#addIn').reportValidity();return}
-  $('#addIn').setCustomValidity('');if(!loved.includes(i))loved.push(i);$('#addIn').value='';renderLoved();runFind()};
+  $('#addIn').setCustomValidity('');if(!loved.includes(i))loved.push(i);nope.delete(i);$('#addIn').value='';save();renderLoved();runFind()};
 $('#addBtn').onclick=addLoved;$('#addIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addLoved()}});
 $('#series').addEventListener('change',runFind);
-$('#reset').onclick=()=>{loved=[];fShelf.clear();document.querySelectorAll('#fShelf .chip').forEach(c=>c.setAttribute('aria-pressed','false'));renderLoved();runFind()};
+$('#reset').onclick=()=>{loved=[];fShelf.clear();document.querySelectorAll('#fShelf .chip').forEach(c=>c.setAttribute('aria-pressed','false'));save();renderLoved();runFind()};
 $('#fShelf').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const g=+c.dataset.g;fShelf.has(g)?fShelf.delete(g):fShelf.add(g);c.setAttribute('aria-pressed',fShelf.has(g));runFind()});
 $('#moreBtn').onclick=()=>{shown+=24;paint()};
 const okFind=i=>fitsAge(i)&&(!fShelf.size||fShelf.has(N[i].g));
+// how close each book is to something they didn't like
+function penOf(){const p=new Map();nope.forEach(d=>near(d).forEach(e=>p.set(e.to,Math.max(p.get(e.to)||0,e.cos))));return p}
 function runFind(){
   if(!N.length||$('#vFind').hidden)return;shown=24;
-  const inc=$('#series').checked,inSeries=new Set(loved.map(i=>N[i].s).filter(Boolean)),inSet=new Set(loved);
-  const inAuth=new Set(loved.map(i=>N[i].a.toLowerCase()));
-  const skip=i=>inSet.has(i)||(!inc&&((N[i].s&&inSeries.has(N[i].s))||inAuth.has(N[i].a.toLowerCase())));
+  const inc=$('#series').checked,inSeries=new Set(loved.map(i=>sk(N[i].s)).filter(Boolean)),inSet=new Set(loved);
+  const inAuth=new Set(loved.map(i=>N[i].a.toLowerCase())),pen=penOf();
+  const skip=i=>inSet.has(i)||readS.has(i)||nope.has(i)||(!inc&&((N[i].s&&inSeries.has(sk(N[i].s)))||inAuth.has(N[i].a.toLowerCase())));
   if(!loved.length){
-    results=byPop.filter(okFind).map(i=>({i,sc:N[i].n?N[i].r+.18*Math.log10(N[i].n):4.8,why:''})).sort((a,b)=>b.sc-a.sc);
+    results=byPop.filter(i=>okFind(i)&&!skip(i)).map(i=>({i,sc:(N[i].n?N[i].r+.18*Math.log10(N[i].n):4.8)-3*(pen.get(i)||0),pen:pen.get(i)||0})).sort((a,b)=>b.sc-a.sc);
     $('#resTitle').textContent=age===null?'Best-loved books':`Best-loved books for a ${age===18?'grown-up':age+'-year-old'}`;
     $('#resNote').textContent='Ranked by rating and how widely they are read';paint();return}
   if(!NEAR){$('#results').innerHTML='<p class="empty">Loading the matches…</p>';return}
@@ -351,34 +481,90 @@ function runFind(){
   results=[];
   cand.forEach(c=>{if(skip(c)||!okFind(c))return;let cov=0,lg=0;
     per.forEach(m=>{const o=m.get(c);if(o){cov++;lg+=Math.log(o.s+.002)}else lg+=Math.log(.002)});
-    results.push({i:c,cov,sc:cov*10+lg/loved.length,m:per.map(m=>m.get(c))})});
+    const pn=pen.get(c)||0;results.push({i:c,cov,pen:pn,sc:cov*10+lg/loved.length-(pn?1.5+12*pn:0),m:per.map(m=>m.get(c))})});
   results.sort((a,b)=>b.sc-a.sc);
   const full=results.filter(r=>r.cov===loved.length).length;
   $('#resTitle').textContent=loved.length===1?`Because they loved ${N[loved[0]].t}`:`Matches for all ${loved.length} favourites`;
   $('#resNote').textContent=loved.length>1&&full<6?`Only ${full} books link to every favourite, so the rest fit most of them.`:(age===null?'':`Filtered for age ${age===18?'18+':age}`);
   paint()}
 function onePerAuthor(){if($('#series').checked)return;const seen=new Set();
-  results=results.filter(r=>{const k=N[r.i].a.toLowerCase(),s=N[r.i].s?'s:'+N[r.i].s.toLowerCase():'';if(seen.has(k)||(s&&seen.has(s)))return false;seen.add(k);if(s)seen.add(s);return true})}
+  results=results.filter(r=>{const k=N[r.i].a.toLowerCase(),s=N[r.i].s?'s:'+sk(N[r.i].s):'';if(seen.has(k)||(s&&seen.has(s)))return false;seen.add(k);if(s)seen.add(s);return true})}
+function why(o,src){src=esc(N[src].t);if(!o)return `<span>Not linked to ${src}</span>`;
+  if(o.p===255&&o.via===-1)return `<span>Similar themes and age to ${src}</span>`;
+  if(o.p!==null&&o.p!==undefined&&o.via===-1)return `<span><b>${o.p}%</b> of ${src} fans loved it</span>`;
+  return `<span>Linked to ${src} through ${esc(N[o.via]?N[o.via].t:'a similar book')}</span>`}
 function paint(){
   onePerAuthor();
   const out=results.slice(0,shown);
-  $('#results').innerHTML=out.map(r=>{const n=N[r.i];
-    const why=r.m?r.m.map((o,k)=>{const src=esc(N[loved[k]].t);if(!o)return `<span>Not linked to ${src}</span>`;
-      if(o.p===255&&o.via===-1)return `<span>Similar themes and age to ${src}</span>`;
-      if(o.p!==null&&o.p!==undefined&&o.via===-1)return `<span><b>${o.p}%</b> of ${src} fans loved it</span>`;
-      return `<span>Linked to ${src} through ${esc(N[o.via]?N[o.via].t:'a similar book')}</span>`}).join('<br>'):'';
-    return `<article class="bk" style="--c:${COL[n.g]}"><h3>${esc(n.t)}</h3><p class="by" style="margin:0;font-size:14px">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
-      <div class="meta" style="margin:0">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${n.n?pill('',n.r.toFixed(2)+' ★'):pill('','Added by hand')}</div>
-      ${why?`<p class="why">${why}</p>`:''}
-      <div class="acts"><button class="btn" type="button" data-add="${r.i}">They loved it</button><button class="btn" type="button" data-web="${r.i}">See in the web</button></div></article>`}).join('')||'<p class="empty">Nothing matches. Try another age, fewer shelves, or different favourites.</p>';
-  $('#moreBtn').hidden=results.length<=shown}
-$('#results').addEventListener('click',e=>{const a=e.target.closest('[data-add]'),w=e.target.closest('[data-web]');
-  if(a){const i=+a.dataset.add;if(!loved.includes(i))loved.push(i);renderLoved();runFind();scrollTo({top:0,behavior:reduce?'auto':'smooth'})}
-  if(w){const i=+w.dataset.web;location.hash='web';requestAnimationFrame(()=>{resize();if(!vis(i)){age=null;$('#age').value='';ageNote();rebuild()}select(i,true)})}});
+  $('#results').innerHTML=out.map(r=>card(r.i,(r.m?r.m.map((o,k)=>why(o,loved[k])).join('<br>'):'')+(r.pen>.05?`${r.m?'<br>':''}<span>A bit like a book they didn't like</span>`:''))).join('')||'<p class="empty">Nothing matches. Try another age, fewer shelves, or different favourites.</p>';
+  hydrate($('#results'));$('#moreBtn').hidden=results.length<=shown}
+
+/* ---------- reading ladder ---------- */
+const MID=[4,8,10,12,14.5,16,17,17,18];
+let ladder=null;
+function ladderDefaults(){
+  if(!$('#ladStart').value&&loved.length)$('#ladStart').value=N[loved[0]].t;
+  if(!$('#ladFrom').dataset.set){$('#ladFrom').value=String(Math.min(17,Math.max(3,age===null?8:age)));$('#ladFrom').dataset.set=1;fillTo()}}
+function fillTo(){const a=+$('#ladFrom').value,cur=+$('#ladTo').value||a+3;
+  $('#ladTo').innerHTML=Array.from({length:18-a},(_,k)=>a+1+k).map(x=>`<option value="${x}">${x===18?'18 (adult)':x}</option>`).join('');
+  $('#ladTo').value=String(Math.min(18,Math.max(a+1,cur>a?cur:a+3)))}
+$('#ladFrom').addEventListener('change',fillTo);
+const fitsAt=(i,a)=>{const b=BANDS[N[i].band];return a>=b[1]-.5&&a<=Math.min(b[2],40)+.5};
+function buildLadder(s,a0,a1){
+  const S=Math.max(4,Math.min(10,Math.round((a1-a0)*2))),pen=penOf();
+  let beam=[{p:[s],sc:0,au:new Set([N[s].a.toLowerCase()])}],ages=[a0];
+  for(let k=1;k<=S;k++){const tk=a0+(a1-a0)*k/S,nxt=[];
+    for(const st of beam){const last=st.p[st.p.length-1];
+      for(const e of near(last)){const c=e.to,n=N[c];
+        if(st.p.includes(c)||readS.has(c)||nope.has(c)||loved.includes(c))continue;
+        if(st.au.has(n.a.toLowerCase())||(n.s&&st.p.some(j=>sk(N[j].s)===sk(n.s))))continue;
+        if(!fitsAt(c,tk))continue;
+        if(e.p!==255&&e.p<10)continue;
+        const sc=st.sc+1.6*Math.log(e.cos+.01)-.5*Math.abs(MID[n.band]-tk)-4*(pen.get(c)||0)+(n.n?.15*Math.log10(n.n):.6)-(e.p===255?.35:0);
+        nxt.push({p:[...st.p,c],sc,au:new Set([...st.au,n.a.toLowerCase()])})}}
+    if(!nxt.length)break;
+    nxt.sort((a,b)=>b.sc-a.sc);const seen=new Set();beam=[];
+    for(const x of nxt){const l=x.p[x.p.length-1];if(seen.has(l))continue;seen.add(l);beam.push(x);if(beam.length>=30)break}
+    ages.push(tk)}
+  return{p:beam[0].p,ages:ages.slice(0,beam[0].p.length),planned:S}}
+const ageTxt=a=>{const w=Math.floor(a+.25),h=a-w>=.25&&a-w<.75;return w>=18?'18+':(h?w+'½':String(Math.round(a)))};
+$('#ladGo').onclick=()=>{
+  const s=find($('#ladStart').value),a0=+$('#ladFrom').value,a1=+$('#ladTo').value;
+  if(s<0){$('#ladNote').textContent='Pick a starting book from the list.';return}
+  if(!NEAR){$('#ladNote').textContent='Still loading the matches, try again in a second.';return}
+  ladder=buildLadder(s,a0,a1);const{p,ages,planned}=ladder;
+  $('#ladNote').textContent=p.length-1<planned?`Only found ${p.length-1} good steps from this book. Try a different starting book or a smaller jump in age.`:'';
+  $('#ladTitle').textContent=`From ${N[s].t} to age ${a1===18?'18+':a1}`;
+  $('#ladSub').textContent=`${p.length-1} steps, about one every ${Math.max(1,Math.round(12*(a1-a0)/Math.max(1,p.length-1)))} months`;
+  $('#ladOut').innerHTML=p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;
+    const w=!k?'<span>Where they are now</span>':e.p===255?`<span>Similar themes and age to ${esc(N[p[k-1]].t)}</span>`:`<span><b>${e.p}%</b> of ${esc(N[p[k-1]].t)} fans loved it</span>`;
+    return `<li style="--k:${k}"><div class="ag">${k?'Age '+ageTxt(ages[k]):'Now'}<small>${k?'Step '+k:'Start'}</small></div>${card(i,w)}</li>`}).join('');
+  hydrate($('#ladOut'));$('#ladActs').hidden=false};
+$('#ladList').onclick=()=>{if(!ladder)return;ladder.p.slice(1).forEach(i=>{if(!list.includes(i))list.push(i)});save();$('#ladList').textContent='Added to my list';
+  document.querySelectorAll('#ladOut [data-act="list"]').forEach(x=>{const on=list.includes(+x.dataset.i);x.classList.toggle('on',on);x.textContent=on?'On my list':'Add to list'})};
+$('#ladWeb').onclick=()=>{if(!ladder)return;const p=ladder.p;location.hash='web';requestAnimationFrame(()=>{resize();showPath(p);
+  $('#pathOut').innerHTML=`<p class="empty">Showing your reading ladder: ${p.length} books.</p>`})};
+
+/* ---------- my list ---------- */
+const msg=t=>{$('#lMsg').textContent=t};
+function renderList(){const items=shared||list;
+  $('#listTitle').textContent=shared?'A reading list someone shared with you':'My reading list';
+  $('#listSub').textContent=items.length?`${items.length} book${items.length>1?'s':''}`:'';
+  $('#lSave').hidden=!shared;$('#lClear').hidden=!!shared;$('#lCopy').hidden=!!shared;
+  $('#listOut').innerHTML=items.map(i=>card(i,'')).join('')||'<p class="empty">Nothing here yet. Tap "Add to list" on any book in the finder, the ladder or the web.</p>';
+  hydrate($('#listOut'));msg('')}
+const shareURL=()=>location.origin+location.pathname+'#list='+list.map(i=>i.toString(36)).join('.');
+const copy=(t,ok)=>{(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>msg(ok)).catch(()=>msg('Copy this: '+t))};
+$('#lCopy').onclick=()=>{if(!list.length)return msg('Add some books first.');copy(shareURL(),'Link copied. Anyone who opens it sees this list.')};
+$('#lText').onclick=()=>{const items=shared||list;if(!items.length)return msg('Nothing to copy yet.');
+  copy(items.map((i,k)=>`${k+1}. ${N[i].t} by ${N[i].a}`).join('\n'),'List copied as text.')};
+$('#lPrint').onclick=()=>window.print();
+$('#lClear').onclick=()=>{if(!list.length||!confirm('Clear your whole list?'))return;list=[];save();renderList()};
+$('#lSave').onclick=()=>{shared.forEach(i=>{if(!list.includes(i))list.push(i)});save();location.hash='list'};
 
 /* ---------- load ---------- */
 fetch('web.json').then(r=>r.json()).then(d=>{
-  SH=d.shelves;BANDS=d.bands;N=d.nodes.map(([t,s,a,year,g,band,r,n,x,y])=>({t,s,a,year,g,band,r,n,x,y}));E=d.edges;
+  COVER=d.cover||[];ISBN=d.isbn||[];SH=d.shelves;BANDS=d.bands;N=d.nodes.map(([t,s,a,year,g,band,r,n,x,y])=>({t,s,a,year,g,band,r,n,x,y}));E=d.edges;
   adj=N.map(()=>[]);E.forEach(([a,b])=>{adj[a].push(b);adj[b].push(a)});
   byPop=N.map((_,i)=>i).sort((a,b)=>N[b].n-N[a].n);byPop.forEach(i=>{const k=N[i].t.toLowerCase();if(!titleIdx.has(k))titleIdx.set(k,i)});
   $('#sB').textContent=N.length.toLocaleString();$('#sL').textContent=E.length.toLocaleString();
@@ -386,10 +572,12 @@ fetch('web.json').then(r=>r.json()).then(d=>{
   const cnt=g=>N.filter(n=>n.g===g).length;
   $('#key').innerHTML=SH.map((g,gi)=>`<button class="chip" type="button" aria-pressed="true" data-g="${gi}"><i style="background:${COL[gi]}"></i>${g} <span>${cnt(gi).toLocaleString()}</span></button>`).join('');
   $('#fShelf').innerHTML=SH.map((g,gi)=>`<button class="chip" type="button" aria-pressed="false" data-g="${gi}"><i style="background:${COL[gi]}"></i>${g}</button>`).join('');
-  age=$('#age').value===''?null:+$('#age').value;
+  N.forEach((_,i)=>keyIdx.set(KEY(i),i));
+  for(let a=3;a<=17;a++)$('#ladFrom').insertAdjacentHTML('beforeend',`<option value="${a}">${a}</option>`);
+  loadKid();renderProfiles();$('#tList').textContent=`My list (${list.length})`;
   if(!initGL())$('#load').insertAdjacentHTML('afterend','');
   $('#load').remove();renderLoved();ageNote();info();route();rebuild();
-  return fetch('near.json').then(r=>r.json()).then(nj=>{K=nj.k;const s=atob(nj.b64);NEAR=new Uint8Array(s.length);for(let i=0;i<s.length;i++)NEAR[i]=s.charCodeAt(i);info();runFind();draw()});
+  return fetch('near.json').then(r=>r.json()).then(nj=>{K=nj.k;const s=atob(nj.b64);NEAR=new Uint8Array(s.length);for(let i=0;i<s.length;i++)NEAR[i]=s.charCodeAt(i);info();route();draw()});
 }).catch(()=>{$('#load').textContent='Could not load the book data. Try reloading the page.'});
 const ro=new ResizeObserver(resize);ro.observe(fig);
 if(!location.hash)history.replaceState(null,'','#web');
