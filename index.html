@@ -110,6 +110,7 @@ footer a{color:inherit}
 .ladder{list-style:none;padding:0;margin:14px 0 0}
 .ladder li{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;margin:0 0 12px;margin-left:min(calc(var(--k)*3.2%),28%)}
 .ladder .ag{font:700 16px/1.2 Syne,sans-serif;text-align:right;padding-top:14px}
+.startbox{margin:8px 0 0;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:15px}
 .ladder .ag small{display:block;font:500 12px Inter,sans-serif;color:var(--mute)}
 .infotop{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:start}
 .infotop .cv{width:64px}
@@ -187,10 +188,13 @@ footer a{color:inherit}
 <div class="find">
   <div class="card form">
     <h2>Build a reading ladder</h2>
-    <p class="small" style="margin:6px 0 0">Start from a book they love now. Each step is loved by fans of the step before and aimed a little older, so their reading grows with them. Books they've read or didn't like are skipped.</p>
-    <label for="ladStart">Starting book</label><input id="ladStart" list="titles" placeholder="e.g. The Wishing Spell">
+    <p class="small" style="margin:6px 0 0">Add the books they love now; the first step fits all of them. After that, each step is loved by fans of the step before and aimed a little older, so their reading grows with them. Books they've read or didn't like are skipped.</p>
+    <label for="ladAdd">Books they love</label>
+    <div class="add"><input id="ladAdd" list="titles" placeholder="e.g. The Wishing Spell"><button class="btn" id="ladAddBtn" type="button">Add</button></div>
+    <div class="loved" id="ladLoved"></div>
     <label for="ladFrom">Their age now</label><select id="ladFrom"></select>
     <label for="ladTo">Climb up to age</label><select id="ladTo"></select>
+    <label for="ladLen">How many books</label><select id="ladLen"><option>5</option><option>10</option><option selected>15</option><option>20</option><option>30</option></select>
     <div class="row"><button class="go" id="ladGo" type="button">Build the ladder</button></div>
     <p class="small" id="ladNote" aria-live="polite"></p>
   </div>
@@ -354,7 +358,7 @@ function info(){
    <div class="row"><button class="btn" type="button" id="asFrom">Start a journey here</button><button class="btn" type="button" id="toFind">Find more like this</button></div>
    <div class="row"><button class="btn${list.includes(sel)?' on':''}" type="button" data-act="list" data-i="${sel}" aria-pressed="${list.includes(sel)}">${list.includes(sel)?'On my list':'Add to my list'}</button><button class="btn" type="button" id="toLadder">Build a ladder from here</button></div>`;
   hydrate(el);
-  $('#toLadder').onclick=()=>{$('#ladStart').value=n.t;location.hash='ladder'};
+  $('#toLadder').onclick=()=>{if(!loved.includes(sel))loved.push(sel);save();renderLoved();location.hash='ladder'};
   $('#asFrom').onclick=()=>{$('#from').value=n.t;$('#to').focus()};
   $('#toFind').onclick=()=>{if(!loved.includes(sel))loved.push(sel);save();renderLoved();location.hash='find'};
 }
@@ -448,6 +452,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
 const chips=(arr,kind)=>arr.map(i=>`<span class="lv">${esc(N[i].t)}<button type="button" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(N[i].t)}">×</button></span>`).join('');
 function renderLoved(){
   $('#loved').innerHTML=chips(loved,'loved')||'<span class="small">None yet. Without favourites you get the best-loved books for the age.</span>';
+  $('#ladLoved').innerHTML=chips(loved,'loved')||'<span class="small">Add one or more. These are shared with the finder.</span>';
   $('#readBox').innerHTML=chips([...readS],'read')||'<span class="small">Tap "Read it" on a book and it stops showing up.</span>';
   $('#nopeBox').innerHTML=chips([...nope],'nope')||'<span class="small">Tap "Not for them" and books like it drop down the list.</span>'}
 $('#vFind').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;const i=+b.dataset.i,k=b.dataset.kind;
@@ -462,6 +467,11 @@ $('#moreBtn').onclick=()=>{shown+=24;paint()};
 const okFind=i=>fitsAge(i)&&(!fShelf.size||fShelf.has(N[i].g));
 // how close each book is to something they didn't like
 function penOf(){const p=new Map();nope.forEach(d=>near(d).forEach(e=>p.set(e.to,Math.max(p.get(e.to)||0,e.cos))));return p}
+// for each favourite: direct matches, plus books one step away through a close match
+function affMaps(srcs){return srcs.map(src=>{const m=new Map(),d=near(src);
+  d.forEach(e=>m.set(e.to,{s:e.cos,p:e.p,via:-1}));
+  d.slice(0,25).forEach(e=>near(e.to).forEach(f=>{if(f.to===src)return;const s=e.cos*f.cos*.8,o=m.get(f.to);if(!o||(o.via!==-1&&o.s<s))m.set(f.to,{s,p:null,via:e.to})}));
+  return m})}
 function runFind(){
   if(!N.length||$('#vFind').hidden)return;shown=24;
   const inc=$('#series').checked,inSeries=new Set(loved.map(i=>sk(N[i].s)).filter(Boolean)),inSet=new Set(loved);
@@ -473,10 +483,7 @@ function runFind(){
     $('#resNote').textContent='Ranked by rating and how widely they are read';paint();return}
   if(!NEAR){$('#results').innerHTML='<p class="empty">Loading the matches…</p>';return}
   // score each candidate against every favourite: direct match, or one step through a close neighbour
-  const per=loved.map(src=>{const m=new Map(),d=near(src);
-    d.forEach(e=>m.set(e.to,{s:e.cos,p:e.p,via:-1}));
-    d.slice(0,25).forEach(e=>near(e.to).forEach(f=>{if(f.to===src)return;const s=e.cos*f.cos*.8,o=m.get(f.to);if(!o||(o.via!==-1&&o.s<s))m.set(f.to,{s,p:null,via:e.to})}));
-    return m});
+  const per=affMaps(loved);
   const cand=new Set();per.forEach(m=>m.forEach((_,k)=>cand.add(k)));
   results=[];
   cand.forEach(c=>{if(skip(c)||!okFind(c))return;let cov=0,lg=0;
@@ -503,46 +510,64 @@ function paint(){
 const MID=[4,8,10,12,14.5,16,17,17,18];
 let ladder=null;
 function ladderDefaults(){
-  if(!$('#ladStart').value&&loved.length)$('#ladStart').value=N[loved[0]].t;
   if(!$('#ladFrom').dataset.set){$('#ladFrom').value=String(Math.min(17,Math.max(3,age===null?8:age)));$('#ladFrom').dataset.set=1;fillTo()}}
 function fillTo(){const a=+$('#ladFrom').value,cur=+$('#ladTo').value||a+3;
   $('#ladTo').innerHTML=Array.from({length:18-a},(_,k)=>a+1+k).map(x=>`<option value="${x}">${x===18?'18 (adult)':x}</option>`).join('');
   $('#ladTo').value=String(Math.min(18,Math.max(a+1,cur>a?cur:a+3)))}
 $('#ladFrom').addEventListener('change',fillTo);
+const addLad=()=>{const i=find($('#ladAdd').value);if(i<0){$('#ladAdd').setCustomValidity('Pick a book from the list');$('#ladAdd').reportValidity();return}
+  $('#ladAdd').setCustomValidity('');if(!loved.includes(i))loved.push(i);nope.delete(i);$('#ladAdd').value='';save();renderLoved()};
+$('#ladAddBtn').onclick=addLad;$('#ladAdd').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addLad()}});
+$('#vLadder').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;loved=loved.filter(x=>x!==+b.dataset.i);save();renderLoved()});
 const fitsAt=(i,a)=>{const b=BANDS[N[i].band];return a>=b[1]-.5&&a<=Math.min(b[2],40)+.5};
-function buildLadder(s,a0,a1){
-  const S=Math.max(4,Math.min(10,Math.round((a1-a0)*2))),pen=penOf();
-  let beam=[{p:[s],sc:0,au:new Set([N[s].a.toLowerCase()])}],ages=[a0];
+// a staircase that starts from all the favourites together, then climbs one book at a time
+function buildLadder(starts,a0,a1,S){
+  const pen=penOf(),per=affMaps(starts),startSet=new Set(starts);
+  const aff=c=>{let lg=0,cov=0;per.forEach(m=>{const o=m.get(c);if(o){cov++;lg+=Math.log(o.s+.002)}else lg+=Math.log(.002)});return{cov,lg:lg/per.length}};
+  const base=n=>n.n?.15*Math.log10(n.n):.6;
+  const ok=(c,st,tk)=>{const n=N[c];if(st.p.includes(c)||startSet.has(c)||readS.has(c)||nope.has(c))return false;
+    if(st.au.has(n.a.toLowerCase())||(n.s&&st.se.has(sk(n.s))))return false;return fitsAt(c,tk)};
+  // every candidate for the next step from a given state, with its link score
+  const options=(st,k,tk)=>{const out=[];
+    if(k===1){const seen=new Set();per.forEach(m=>m.forEach((_,c)=>{if(seen.has(c))return;seen.add(c);if(!ok(c,st,tk))return;const a=aff(c);out.push({c,link:1.6*a.lg+2*a.cov})}))}
+    else{for(const e of near(st.p[st.p.length-1])){const c=e.to;if(!ok(c,st,tk)||(e.p!==255&&e.p<10))continue;
+      out.push({c,link:1.6*Math.log(e.cos+.01)+.25*aff(c).lg-(e.p===255?.35:0)})}}
+    return out.map(o=>({c:o.c,sc:o.link-.5*Math.abs(MID[N[o.c].band]-tk)-4*(pen.get(o.c)||0)+base(N[o.c])}))};
+  const grow=(st,c,sc)=>{const n=N[c],au=new Set(st.au),se=new Set(st.se);au.add(n.a.toLowerCase());if(n.s)se.add(sk(n.s));return{p:[...st.p,c],sc:st.sc+sc,au,se}};
+  const root={p:[],sc:0,au:new Set(starts.map(i=>N[i].a.toLowerCase())),se:new Set(starts.map(i=>sk(N[i].s)).filter(Boolean))};
+  let beam=[root];const ages=[];
   for(let k=1;k<=S;k++){const tk=a0+(a1-a0)*k/S,nxt=[];
-    for(const st of beam){const last=st.p[st.p.length-1];
-      for(const e of near(last)){const c=e.to,n=N[c];
-        if(st.p.includes(c)||readS.has(c)||nope.has(c)||loved.includes(c))continue;
-        if(st.au.has(n.a.toLowerCase())||(n.s&&st.p.some(j=>sk(N[j].s)===sk(n.s))))continue;
-        if(!fitsAt(c,tk))continue;
-        if(e.p!==255&&e.p<10)continue;
-        const sc=st.sc+1.6*Math.log(e.cos+.01)-.5*Math.abs(MID[n.band]-tk)-4*(pen.get(c)||0)+(n.n?.15*Math.log10(n.n):.6)-(e.p===255?.35:0);
-        nxt.push({p:[...st.p,c],sc,au:new Set([...st.au,n.a.toLowerCase()])})}}
+    for(const st of beam)for(const o of options(st,k,tk))nxt.push(grow(st,o.c,o.sc));
     if(!nxt.length)break;
     nxt.sort((a,b)=>b.sc-a.sc);const seen=new Set();beam=[];
     for(const x of nxt){const l=x.p[x.p.length-1];if(seen.has(l))continue;seen.add(l);beam.push(x);if(beam.length>=30)break}
     ages.push(tk)}
-  return{p:beam[0].p,ages:ages.slice(0,beam[0].p.length),planned:S}}
+  const p=beam[0].p;
+  // runner-up books for each step, given the steps before it
+  const alts=[];let st=root;
+  const tag=i=>[N[i].a.toLowerCase(),N[i].s?'s:'+sk(N[i].s):'a:'+N[i].a.toLowerCase()];
+  p.forEach((c,k)=>{const used=new Set(tag(c)),pick=[];
+    for(const o of options(st,k+1,ages[k]).sort((a,b)=>b.sc-a.sc)){if(pick.length>=2)break;if(o.c===c||p.includes(o.c)||tag(o.c).some(t=>used.has(t)))continue;tag(o.c).forEach(t=>used.add(t));pick.push(o.c)}
+    alts.push(pick);st=grow(st,c,0)});
+  return{p,ages,alts,per,starts,planned:S}}
 const ageTxt=a=>{const w=Math.floor(a+.25),h=a-w>=.25&&a-w<.75;return w>=18?'18+':(h?w+'½':String(Math.round(a)))};
 $('#ladGo').onclick=()=>{
-  const s=find($('#ladStart').value),a0=+$('#ladFrom').value,a1=+$('#ladTo').value;
-  if(s<0){$('#ladNote').textContent='Pick a starting book from the list.';return}
+  const a0=+$('#ladFrom').value,a1=+$('#ladTo').value,S=+$('#ladLen').value;
+  if(!loved.length){$('#ladNote').textContent='Add at least one book they love.';return}
   if(!NEAR){$('#ladNote').textContent='Still loading the matches, try again in a second.';return}
-  ladder=buildLadder(s,a0,a1);const{p,ages,planned}=ladder;
-  $('#ladNote').textContent=p.length-1<planned?`Only found ${p.length-1} good steps from this book. Try a different starting book or a smaller jump in age.`:'';
-  $('#ladTitle').textContent=`From ${N[s].t} to age ${a1===18?'18+':a1}`;
-  $('#ladSub').textContent=`${p.length-1} steps, about one every ${Math.max(1,Math.round(12*(a1-a0)/Math.max(1,p.length-1)))} months`;
-  $('#ladOut').innerHTML=p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;
-    const w=!k?'<span>Where they are now</span>':e.p===255?`<span>Similar themes and age to ${esc(N[p[k-1]].t)}</span>`:`<span><b>${e.p}%</b> of ${esc(N[p[k-1]].t)} fans loved it</span>`;
-    return `<li style="--k:${k}"><div class="ag">${k?'Age '+ageTxt(ages[k]):'Now'}<small>${k?'Step '+k:'Start'}</small></div>${card(i,w)}</li>`}).join('');
-  hydrate($('#ladOut'));$('#ladActs').hidden=false};
-$('#ladList').onclick=()=>{if(!ladder)return;ladder.p.slice(1).forEach(i=>{if(!list.includes(i))list.push(i)});save();$('#ladList').textContent='Added to my list';
+  ladder=buildLadder(loved.slice(),a0,a1,S);const{p,ages,alts,per,starts,planned}=ladder;
+  $('#ladNote').textContent=p.length<planned?`Only found ${p.length} good steps. Try more favourites, a bigger age range or fewer books.`:'';
+  $('#ladTitle').textContent=`From ${starts.length>1?'their '+starts.length+' favourites':N[starts[0]].t} to age ${a1===18?'18+':a1}`;
+  $('#ladSub').textContent=p.length?`${p.length} books, about ${Math.max(1,Math.round(p.length/Math.max(1,a1-a0)))} a year`:'';
+  const whyStep=(i,k)=>{if(!k){let best=-1,bo=null;per.forEach((m,j)=>{const o=m.get(i);if(o&&(!bo||o.s>bo.s)){bo=o;best=j}});return bo?why(bo,starts[best]):''}
+    const e=near(p[k-1]).find(x=>x.to===i),src=esc(N[p[k-1]].t);return e.p===255?`<span>Similar themes and age to ${src}</span>`:`<span><b>${e.p}%</b> of ${src} fans loved it</span>`};
+  const alt=k=>alts[k]&&alts[k].length?`<br><span>Also good here: ${alts[k].map(c=>`<button class="linkbtn" type="button" data-act="web" data-i="${c}">${esc(N[c].t)}</button>`).join(' · ')}</span>`:'';
+  $('#ladOut').innerHTML=`<li style="--k:0"><div class="ag">Now<small>Start</small></div><p class="startbox">Starting from ${starts.map(i=>`<b>${esc(N[i].t)}</b>`).join(', ')}</p></li>`+
+    p.map((i,k)=>`<li style="--k:${Math.round((k+1)*10/Math.max(10,p.length))}"><div class="ag">Age ${ageTxt(ages[k])}<small>Step ${k+1}</small></div>${card(i,whyStep(i,k)+alt(k))}</li>`).join('')||'<li><p class="empty">No ladder found. Try different favourites or ages.</p></li>';
+  hydrate($('#ladOut'));$('#ladActs').hidden=!p.length};
+$('#ladList').onclick=()=>{if(!ladder)return;ladder.p.forEach(i=>{if(!list.includes(i))list.push(i)});save();$('#ladList').textContent='Added to my list';
   document.querySelectorAll('#ladOut [data-act="list"]').forEach(x=>{const on=list.includes(+x.dataset.i);x.classList.toggle('on',on);x.textContent=on?'On my list':'Add to list'})};
-$('#ladWeb').onclick=()=>{if(!ladder)return;const p=ladder.p;location.hash='web';requestAnimationFrame(()=>{resize();showPath(p);
+$('#ladWeb').onclick=()=>{if(!ladder)return;const p=[ladder.starts[0],...ladder.p];location.hash='web';requestAnimationFrame(()=>{resize();showPath(p);
   $('#pathOut').innerHTML=`<p class="empty">Showing your reading ladder: ${p.length} books.</p>`})};
 
 /* ---------- my list ---------- */
