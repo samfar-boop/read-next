@@ -157,7 +157,7 @@ footer a{color:inherit}
 </section>
 
 <datalist id="titles"></datalist>
-<footer>Data: <a href="https://github.com/zygmuntz/goodbooks-10k">goodbooks-10k</a>, about 6 million Goodreads ratings from 53,000 readers, collected around 2017, so newer books are missing. Of its 10,000 books, 469 explicit adult titles were left out. Links and matches come from those ratings; shelves and age bands come from readers' own tags.</footer>
+<footer>Data: <a href="https://github.com/zygmuntz/goodbooks-10k">goodbooks-10k</a>, about 6 million Goodreads ratings from 53,000 readers, collected around 2017, so newer books are missing. Of its 10,000 books, 469 explicit adult titles were left out, and 113 popular children's books it was missing were added by hand (marked "Added by hand"); those have no reader ratings, so they are matched on theme and age. Links and matches come from those ratings; shelves and age bands come from readers' own tags.</footer>
 </div>
 
 <script>
@@ -292,10 +292,10 @@ function info(){
   if(sel<0){el.innerHTML=`<h2>Pick a book</h2><p class="empty">Tap any star or search above. Books that share lots of readers pull together, so shelves form clusters, and lines between clusters are the surprising jumps. Set an age at the top to show only books that suit it.</p>`;return}
   const n=N[sel],l=webNb(sel).slice(0,12);
   el.innerHTML=`<h2>${esc(n.t)}</h2><p class="by">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
-   <div class="meta">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${pill('',n.r.toFixed(2)+' average')}${pill('',fmt(n.n)+' ratings')}</div>
+   <div class="meta">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${n.n?pill('',n.r.toFixed(2)+' average')+pill('',fmt(n.n)+' ratings'):pill('','Added by hand')}</div>
    ${n.s?`<p class="by">Series: ${esc(n.s)}</p>`:''}
-   <h3>Fans of this book also loved${age!==null?' (suits the age you picked)':''}</h3><div class="list">${l.map(e=>{const m=N[e.to];return `<button class="lk" data-i="${e.to}" type="button"><b>${esc(m.t)}</b><span>${esc(m.a)} · ${SH[m.g]}</span><em>${e.p===null?'':e.p+'%'}</em></button>`}).join('')||'<p class="empty">No close matches suit this age.</p>'}</div>
-   <p class="small">% = share of this book's fans who also rated that one 4 or 5 stars.</p>
+   <h3>${n.n?'Fans of this book also loved':'Books with similar themes and age'}${age!==null?' (suits the age you picked)':''}</h3><div class="list">${l.map(e=>{const m=N[e.to];return `<button class="lk" data-i="${e.to}" type="button"><b>${esc(m.t)}</b><span>${esc(m.a)} · ${SH[m.g]}</span><em>${e.p===null?'':e.p===255?'theme':e.p+'%'}</em></button>`}).join('')||'<p class="empty">No close matches suit this age.</p>'}</div>
+   <p class="small">% = share of this book's fans who also rated that one 4 or 5 stars. "theme" = a hand-added book matched on themes and age, as it has no reader ratings.</p>
    <div class="row"><button class="btn" type="button" id="asFrom">Start a journey here</button><button class="btn" type="button" id="toFind">Find more like this</button></div>`;
   $('#asFrom').onclick=()=>{$('#from').value=n.t;$('#to').focus()};
   $('#toFind').onclick=()=>{if(!loved.includes(sel))loved.push(sel);renderLoved();location.hash='find'};
@@ -314,7 +314,7 @@ $('#route').onclick=()=>{
   if(!vis(a)||!vis(b)){o.innerHTML='<p class="empty">One of those books is hidden by the age or shelf filter.</p>';return}
   const p=bfs(a,b);if(!p){o.innerHTML='<p class="empty">No route with the current filters. Try a different age or turn shelves back on.</p>';return}
   path=p;t0=performance.now();sel=-1;info();
-  o.innerHTML=`<p class="empty">${p.length} books, ${p.length-1} steps.</p><ol class="path">${p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;return `<li>${esc(N[i].t)}${e?`<small>${e.p}% of the last book's fans loved this</small>`:''}</li>`}).join('')}</ol>`;
+  o.innerHTML=`<p class="empty">${p.length} books, ${p.length-1} steps.</p><ol class="path">${p.map((i,k)=>{const e=k?near(p[k-1]).find(x=>x.to===i):null;return `<li>${esc(N[i].t)}${e?`<small>${e.p===255?'Similar themes and age to the last book':e.p+"% of the last book's fans loved this"}</small>`:''}</li>`}).join('')}</ol>`;
   const xs=p.map(i=>N[i].x),ys=p.map(i=>N[i].y),bw=Math.max(...xs)-Math.min(...xs)+40,bh=Math.max(...ys)-Math.min(...ys)+40;
   view.s=Math.min(14,Math.min(W/bw,H/bh)*.85);view.x=W/2-(Math.min(...xs)+Math.max(...xs))/2*view.s;view.y=H/2-(Math.min(...ys)+Math.max(...ys))/2*view.s;draw()};
 $('#clear').onclick=()=>{path=[];$('#pathOut').innerHTML='';$('#from').value='';$('#to').value='';draw()};
@@ -338,7 +338,7 @@ function runFind(){
   const inAuth=new Set(loved.map(i=>N[i].a.toLowerCase()));
   const skip=i=>inSet.has(i)||(!inc&&((N[i].s&&inSeries.has(N[i].s))||inAuth.has(N[i].a.toLowerCase())));
   if(!loved.length){
-    results=byPop.filter(okFind).map(i=>({i,sc:N[i].r+.18*Math.log10(N[i].n),why:''})).sort((a,b)=>b.sc-a.sc);
+    results=byPop.filter(okFind).map(i=>({i,sc:N[i].n?N[i].r+.18*Math.log10(N[i].n):4.8,why:''})).sort((a,b)=>b.sc-a.sc);
     $('#resTitle').textContent=age===null?'Best-loved books':`Best-loved books for a ${age===18?'grown-up':age+'-year-old'}`;
     $('#resNote').textContent='Ranked by rating and how widely they are read';paint();return}
   if(!NEAR){$('#results').innerHTML='<p class="empty">Loading the matches…</p>';return}
@@ -364,10 +364,11 @@ function paint(){
   const out=results.slice(0,shown);
   $('#results').innerHTML=out.map(r=>{const n=N[r.i];
     const why=r.m?r.m.map((o,k)=>{const src=esc(N[loved[k]].t);if(!o)return `<span>Not linked to ${src}</span>`;
+      if(o.p===255&&o.via===-1)return `<span>Similar themes and age to ${src}</span>`;
       if(o.p!==null&&o.p!==undefined&&o.via===-1)return `<span><b>${o.p}%</b> of ${src} fans loved it</span>`;
       return `<span>Linked to ${src} through ${esc(N[o.via]?N[o.via].t:'a similar book')}</span>`}).join('<br>'):'';
     return `<article class="bk" style="--c:${COL[n.g]}"><h3>${esc(n.t)}</h3><p class="by" style="margin:0;font-size:14px">${esc(n.a)}${n.year?', '+(n.year<0?(-n.year)+' BC':n.year):''}</p>
-      <div class="meta" style="margin:0">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${pill('',n.r.toFixed(2)+' ★')}</div>
+      <div class="meta" style="margin:0">${pill(COL[n.g],SH[n.g])}${pill('',bandLabel(n))}${n.n?pill('',n.r.toFixed(2)+' ★'):pill('','Added by hand')}</div>
       ${why?`<p class="why">${why}</p>`:''}
       <div class="acts"><button class="btn" type="button" data-add="${r.i}">They loved it</button><button class="btn" type="button" data-web="${r.i}">See in the web</button></div></article>`}).join('')||'<p class="empty">Nothing matches. Try another age, fewer shelves, or different favourites.</p>';
   $('#moreBtn').hidden=results.length<=shown}
